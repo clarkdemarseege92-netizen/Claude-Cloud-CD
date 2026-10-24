@@ -244,3 +244,16 @@ Do not translate, shorten, repeat or restyle the wording of any line. Do not add
 - `render` 的输出报告曾叫 `<out>.json`，覆盖了同名的识图结果 → 改名 `<out>.render.json`。
 
 本轮识图累计费用 ≈ $0.013（含调参时的默认推理那次 $0.005）。
+
+## 决定：生图流程里不调用 AI 识图 / 断行（2026-10-24）
+
+理由（与产品方确认）：有了拖动编辑页之后，识图的成果（主体外框、收窄文字列、区域检查）都会被人工调整覆盖；断行方面，母语文字商户一眼能看出、手动调整即可（海报上故意拆字本身也是一种特效），而对不熟悉的外国文字，商户真正需要的是**翻译准确**，属于文案环节，不属于排版环节。
+
+改动：
+- 删除 `tools/vision.py`；`render_html.mjs init` 去掉 `--vision` 和按主体收窄列宽的逻辑；模板 `initialLayout` 去掉 `columnMinWidth` / `subjectGap`；文档不再写 `layoutNote`。
+- `init` 默认按空格分段；不用空格分词的文字一整段放不下时由浏览器段内断行（渲染报告 `unlockedSegments` 会列出，编辑器可提示商户检查）。商户在编辑器里可在任意字处拆段 + `forceBreaks`。
+- 保留免费的亮度粗检（`check_text.py`）作为编辑器实时提示的参考逻辑。
+
+验证（底图 t7，无 AI）：英文 `init` → `render` 与之前一致；泰文默认分段时标题、副标题由浏览器段内断行（报告已列出这两段），等待商户在编辑器里调整。两个示例文档仍通过 `validate`。
+
+上文 DeepSeek 一节保留作记录：免费的浏览器分词（`Intl.Segmenter`）会把外来词拆碎（"โซเชียล" → "โซ|เชีย|ล"），这也是为什么默认只按空格分段、不用它。

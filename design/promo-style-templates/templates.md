@@ -61,12 +61,9 @@
 生图模型只出**无字底图**；文字由代码用真实字体、HTML/CSS 排上去（`tools/render_html.mjs`，Chromium）。
 
 1. 生图提示词：`build_no_text`（`tools/build_prompt.py`），用模板的 `canvasNoText`（规定放字的暗部区域）、`palette.baseNoText` / `accentRoleNoText`、`avoidNoText`，末尾加通用 `noText` 句。
-2. 识图（`tools/vision.py`，`deepseek/deepseek-v4.1-flash`），两次调用：
-   - **看图**（带图，关推理，约 3 秒 / $0.0003）：主体外框、所有物件外框、底图里有没有字、需要人看的内容（单独漂浮的手、宗教符号、真实商标……）。「放字区域有没有被侵入」由代码按外框几何计算。
-   - **断行**（纯文字，推理 `low`，约 20–30 秒 / $0.001–0.002）：只对不用空格分词的文字（泰、老挝、缅甸、高棉）切断行单位 `segments`；拼不回原文逐字相同就丢弃、退回按空格切。它只依赖文案，**可以和生图并行**，不增加等待时间。
-3. `init --vision`：模板 `textLayer` + 文案 + 识图结果 → **文字图层文档**（下一节）。主体伸进文字列时，只把与主体同高的行收窄；识图的提示（区域被侵入、底图有字、concerns）写进文档的 `layoutNote`，给编辑器展示。
-4. 编辑器：商户拖动位置、调字号、点断行点、换特效预设 / 颜色角色——**改的就是这份文档**。
-5. `render`：服务端校验文档 → 同一套 HTML/CSS 截图出成品。编辑器里看到的和导出的是同一份 CSS。
+2. `init`：模板 `textLayer` + 文案 → **文字图层文档**（下一节）。默认按空格分段；**不调用任何 AI**（不识图、不切词）——母语文字的断行和位置由商户在编辑器里一眼看出、手动调整；不熟悉的外国文字，商户真正需要的是翻译准确，那属于文案环节。
+3. 编辑器：商户拖动位置、调字号、在任意字处断行（把一段拆开 + `forceBreaks`）、换特效预设 / 颜色角色——**改的就是这份文档**。亮度粗检（`tools/check_text.py` 的逻辑，深色模板适用）可作为实时提示：字压到画面里的东西时标红。
+4. `render`：服务端校验文档 → 同一套 HTML/CSS 截图出成品。编辑器里看到的和导出的是同一份 CSS。
 
 #### 模板里的 `textLayer`（初始值 + 约束）
 
@@ -77,7 +74,7 @@
 | `minCapPct` / `maxCapPct` | 字高上下限（参照字高 / 画高 ×100）。**2.5 是硬下限，编辑器和服务端都要挡** |
 | `accentLight` / `accentDark` | 强调色向白 / 向黑混合的比例，生成 `--accent-light` / `--accent-dark` |
 | `colors` | 允许的颜色角色：角色名 → 固定色，或 `accent` / `accentLight`（跟品牌色走） |
-| `initialLayout` | `init` 用的初始版式：边距、文字列顶 / 宽 / 间距 / 底、底边基线、`widthShrinkFloor`（为了不拆开一段最多缩到几倍）；有识图结果时，主体伸进文字列就把列宽收到「主体左边 − `subjectGap`」，但不窄于 `columnMinWidth` |
+| `initialLayout` | `init` 用的初始版式：边距、文字列顶 / 宽 / 间距 / 底、底边基线、`widthShrinkFloor`（为了不拆开一段最多缩到几倍） |
 | `slots` | 每槽默认字高 `capPct`、字重、颜色角色、行高、`maxLines`、`pill`（胶囊框） |
 | `effects` / `defaultEffect` | 特效预设：id → 一段 CSS（选择器 `.t` 是所有行，`.headline` 等是单槽；颜色只用 `var(--accent…)` 或 `currentColor`）。编辑器只能在这些预设里选 |
 
@@ -110,15 +107,13 @@
 }
 ```
 
-文档里可选的 `layoutNote`（`init` 写入，渲染器不读）：`narrowWidth` / `narrowedSlots`（哪些行因主体被收窄）、`vision.uncleanZones` / `hasText` / `textSeen` / `concerns`（编辑器应提示商户或拦下）。
-
 规则（`render_html.mjs validate`；服务端必须执行——文档来自浏览器，不可信）：
 - `segments.join("") === text`：编辑器只能改断行，不能借断行偷改字；改字要同时改 `text` 和 `segments`。
 - 某一段比文字框还宽时，渲染器**只对那一段**放开段内断行，并在输出里报 `unlockedSegments`，编辑器应提示商户加宽框或缩小字号。
 - 排出来的文字越过安全边距时，渲染器输出 `outsideSafeArea`，编辑器应提示。
 - 颜色、特效只能取模板里列出的值；不接受任意 CSS。
 
-`segments` 的来源：没有识图结果时按空格切（空格留在前一段末尾）；泰文等由识图模型给出（格式见 `examples/ezitak-th.segments.json`：`{槽名: [段, …]}`）。
+`segments` 的来源：`init` 按空格切（空格留在前一段末尾）。不用空格分词的文字（泰文等）一整段放不下时，浏览器在段内自行断行；断得不对由商户在编辑器里拆段、强制换行或调宽度。编辑器拆段 / 合并时只改切分方式，拼起来必须仍与 `text` 逐字相同。
 
 ---
 
@@ -192,9 +187,7 @@ SaaS/线上服务。主体是单件物品或一个画面时效果最好。
       "columnGap": 0.022,
       "columnBottom": 0.5,
       "baseline": 0.945,
-      "widthShrinkFloor": 0.75,
-      "columnMinWidth": 0.36,
-      "subjectGap": 0.02
+      "widthShrinkFloor": 0.75
     },
     "slots": {
       "badge": {

@@ -1,12 +1,13 @@
 // 文字图层：模板 + 文案 → TextLayerDoc（init）；TextLayerDoc → 成品图（render）。格式见 ../templates.md「文字图层文档」。
 //
-//   node render_html.mjs init   <base.png> <copy.json> <template_id> <doc.json> --font-dir <dir> [--accent #RRGGBB] [--effect id] [--vision vision.json | --segments seg.json]
+//   node render_html.mjs init   <base.png> <copy.json> <template_id> <doc.json> --font-dir <dir> [--accent #RRGGBB] [--effect id] [--segments seg.json]
 //   node render_html.mjs render <doc.json> <out.png> --font-dir <dir>
 //   node render_html.mjs validate <doc.json>
 //
 // 编辑器读写的就是 doc.json；服务端只认 doc.json 出图，所以编辑器里看到的和导出的是同一套 HTML/CSS。
-// --vision：vision.py 的输出，用其中的 segments（断行单位）和 subjectBox（主体伸进文字列时收窄列宽）。
-// --segments：只给断行单位 {slot: ["段1", "段2", ...]}。都没有时按空格切（空格留在前一段末尾）。
+// 默认按空格分段（空格留在前一段末尾）；不用空格分词的文字整段放不下时由浏览器自行断行。
+// 断在哪里由商户在编辑器里决定（拆段 + forceBreaks）；生图流程里不调用任何 AI 做断行或识图（2026-10-24 定）。
+// --segments：测试用，直接给定分段 {slot: ["段1", "段2", ...]}。
 // render 同时输出 <out>.render.json：每行实际行数、外框（供碰撞检查）、哪些段因放不下被迫段内断行。
 import { createRequire } from "node:module";
 const { chromium } = createRequire(import.meta.url)("playwright"); // 预装在全局，ESM import 解析不到
@@ -163,7 +164,7 @@ async function render(doc, outPng, fontDir) {
 }
 
 /** 模板 + 文案 → 初始文档：按模板 initialLayout 排一遍（左上文字列 + 底边一行），把每行的位置写成绝对坐标（画面比例）。 */
-async function init(basePath, copy, templateId, effect, accent, segmentsHint, fontDir, subjectBox = null) {
+async function init(basePath, copy, templateId, effect, accent, segmentsHint, fontDir) {
   const t = loadTemplate(templateId);
   const tl = t.textLayer;
   const L = tl.initialLayout;
@@ -187,31 +188,14 @@ async function init(basePath, copy, templateId, effect, accent, segmentsHint, fo
   // 左上文字列：角标 → 标题 → 副标题，逐行叠放。列底越过 columnBottom、或有段放不进列宽 → 整体缩小再排；
   // 字号不低于 minCapPct；为了让一段不被拆开最多缩到 widthShrinkFloor 倍（再小标题就失去层级）。
   const colSlots = ["badge", "headline", "subheadline"].filter((s) => filled.includes(s));
-  // 识图给了主体外框、且主体伸进文字列 → 与主体同高的那几行收到「主体左边 − subjectGap」，不窄于 columnMinWidth；
-  // 主体上方的行保持原宽（只收窄需要收的行，否则标题会被无谓缩小——实测泰文标题因此缩到和正文一样大）
-  let narrowW = L.columnMaxWidth;
-  let subjectTop = 2;
-  if (subjectBox) {
-    const [sx0, sy0, , sy1] = subjectBox;
-    if (sx0 < L.margin + L.columnMaxWidth && sy0 < L.columnBottom && sy1 > L.columnTop) {
-      narrowW = Math.max(L.columnMinWidth, +(sx0 - L.subjectGap - L.margin).toFixed(4));
-      subjectTop = sy0;
-    }
-  }
-  const narrowed = [];
+  // 文字列宽不足以放下一整段时，整列按比例缩小，最多缩到 widthShrinkFloor 倍；再放不下就让那一段段内断行（渲染器会报出来）
   for (let scale = 1; ; scale -= 0.02) {
-    narrowed.length = 0;
     let y = L.columnTop;
     let split = false;
     const lines = [];
     for (const s of colSlots) {
-      let l = mk(s, L.margin, +y.toFixed(4), L.columnMaxWidth, "left", scale);
-      let r = (await measure([l]))[s];
-      if (narrowW < L.columnMaxWidth && (r.box[3] / H) > subjectTop) {
-        l = mk(s, L.margin, +y.toFixed(4), narrowW, "left", scale);
-        r = (await measure([l]))[s];
-        narrowed.push(s);
-      }
+      const l = mk(s, L.margin, +y.toFixed(4), L.columnMaxWidth, "left", scale);
+      const r = (await measure([l]))[s];
       split ||= r.unlockedSegments.length > 0;
       lines.push(l);
       y += (r.box[3] - r.box[1]) / H + L.columnGap;
@@ -221,7 +205,6 @@ async function init(basePath, copy, templateId, effect, accent, segmentsHint, fo
     doc.lines.push(...lines);
     break;
   }
-  doc.layoutNote = { narrowWidth: narrowW, narrowedSlots: [...narrowed] };
   // 底边：品牌名右对齐、页脚左对齐，底边对齐在 baseline；页脚宽 = 画宽 - 两侧边距 - 品牌名宽 - 间隔
   let brandW = 0;
   if (filled.includes("brand")) {
@@ -244,16 +227,8 @@ try {
   if (cmd === "init") {
     const [, base, copyPath, templateId, docPath] = args;
     const copy = JSON.parse(fs.readFileSync(copyPath, "utf8"));
-    const vision = opt("--vision") ? JSON.parse(fs.readFileSync(opt("--vision"), "utf8")) : null;
-    const seg = vision?.segments ?? (opt("--segments") ? JSON.parse(fs.readFileSync(opt("--segments"), "utf8")) : null);
-    const doc = await init(base, copy, templateId, opt("--effect"), opt("--accent"), seg, fontDir, vision?.subjectBox ?? null);
-    if (vision) {
-      // 给编辑器的提示：放字区域被侵入、底图里有字、需要人看的内容
-      doc.layoutNote.vision = {
-        uncleanZones: vision.zones.filter((z) => !z.clean).map((z) => ({ name: z.name, by: z.intrusions.map((i) => i.what) })),
-        hasText: vision.hasText, textSeen: vision.textSeen, concerns: vision.concerns,
-      };
-    }
+    const seg = opt("--segments") ? JSON.parse(fs.readFileSync(opt("--segments"), "utf8")) : null;
+    const doc = await init(base, copy, templateId, opt("--effect"), opt("--accent"), seg, fontDir);
     fs.writeFileSync(docPath, JSON.stringify(doc, null, 1));
     const errs = validate(doc);
     console.log(docPath, errs.length ? "INVALID:\n" + errs.join("\n") : "valid");
