@@ -6,6 +6,14 @@
       "badge": "Free trial",
       "small": "Social posts drafted for you, too",
       "brand": "EziTak"
+    },
+    "ezitak-th": {
+      "_note": "泰文草稿，需母语者复核",
+      "headline": "ทุกข้อความ ตอบกลับในไม่กี่วินาที",
+      "subheadline": "ตอบคำถามและรับจองได้ทุกภาษา",
+      "badge": "ทดลองใช้ฟรี",
+      "small": "ช่วยร่างโพสต์โซเชียลให้ด้วย",
+      "brand": "EziTak"
     }
   },
   "cases": {

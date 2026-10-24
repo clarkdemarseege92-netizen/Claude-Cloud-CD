@@ -171,3 +171,20 @@ Do not translate, shorten, repeat or restyle the wording of any line. Do not add
 | t7 | 空白区扩到「左上略超半宽 × 上半高 + 底边一条」，并写明漂浮物不进入这些区域；排字代码限制文字列不越过上半高 | $0.01 | 像素复核：角标 2.61%、标题 3.92%、副标题 2.67%、页脚 2.61%、品牌 3.24% —— **全部 ≥ 2.5% ✅** | 底图无字 ✅；碰撞粗检全部 0% ✅；五行逐字正确、大小写正确、品牌名原样 ✅（代码排字，不存在错字）。⚠ 漂浮物里有一个像胶囊药丸的物件，和主体关系不明显 |
 
 识图模型已核实可用：`deepseek/deepseek-v4.1-flash`（OpenRouter，input_modalities 含 image）。本轮未接入。
+
+## Chromium（HTML/CSS）文字特效对比 —— 同一张无字底图 t7，零 API 费用
+
+工具：`tools/render_html.mjs`（Playwright + 预装 Chromium；字体 Inter + Noto Sans Thai，均来自 google/fonts，OFL 许可）。
+
+| 特效 | CSS 要点 | 结论 |
+|---|---|---|
+| glow 柔和发光 | 多层 `text-shadow`（强调色半透明） | ✅ 最贴合「深色漂浮」，建议作为该模板默认 |
+| stroke 描边 | `-webkit-text-stroke` + `paint-order: stroke fill` + 硬投影；角标实心 | ✅ 适合「大字报」 |
+| gradient 渐变字 | `background-clip: text` + `drop-shadow` | ✅ 适合「杂志封面 / 产品棚拍」 |
+| neon 霓虹 | 白字 + 4–5 层强调色 `text-shadow`；角标 `box-shadow` 发光框 | ✅ 适合「霓虹夜景」 |
+| extrude 立体挤出 | 9 层逐级偏移的深色 `text-shadow` | ✅ 可用，适合「扁平插画 / 大字报」 |
+
+泰文（`ezitak-th`，草稿，**需母语者复核**）：
+- ✅ 声调和上下元音位置正确（ข้ ใช้ ไม่ กี่ ทุ），描边特效下附加符号也完整。
+- ❌→✅ 字高：同字号下泰文辅音只有拉丁大写的约 3/4，页脚实测 1.99%；改为「按文字体系取参照字」（拉丁 H / 西里尔 Н / 泰文 ก / 中日 国）后实测 2.6%。
+- ❌ 换行：浏览器按词典断行，标题把 "ตอบกลับ"（回复）拆成 "ตอบ / กลับ"。改成「只在原文空格处换行」后，整段 "ตอบกลับในไม่กี่วินาที" 在 0.75 倍字号内放不进半宽文字列，代码只能对这一段放开断行，结果仍是 "ตอบ / กลับ"。**未解决**，见下一步建议。
