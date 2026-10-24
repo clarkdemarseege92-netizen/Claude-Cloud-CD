@@ -5,8 +5,8 @@
 
 ## 型号
 
-- 主用：Meta Muse Image —— **型号 id 未核实**（openrouter.ai 被环境网络策略拦截）
-- 备用：ByteDance Seedream 5.0 Flash —— **型号 id 未核实**
+- 主用：Meta Muse Image，id `meta/muse-image`（2026-10-24 用 `/models?output_modalities=image` 核实；output_modalities 仅 image）
+- 备用：ByteDance Seedream 5.0 Flash，id `bytedance-seed/seedream-5-0-flash`（同上核实）
 
 ## 1. dark-floating（深色漂浮）· 第 1 轮
 

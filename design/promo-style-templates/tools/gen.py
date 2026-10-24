@@ -62,7 +62,7 @@ def main():
     ap.add_argument("case_id", nargs="?")
     ap.add_argument("--model")
     ap.add_argument("--accent")
-    ap.add_argument("--modalities", default="image,text")
+    ap.add_argument("--modalities", default="image")  # 两个型号的 output_modalities 都只有 image
     ap.add_argument("--out", default="out")
     ap.add_argument("--tag", default="")
     ap.add_argument("--dry-run", action="store_true")
