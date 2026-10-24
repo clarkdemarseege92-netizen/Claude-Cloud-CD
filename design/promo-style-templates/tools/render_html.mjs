@@ -1,41 +1,41 @@
 // 用 Chromium（Playwright）把文案按 HTML/CSS 排到无字底图上，支持 CSS 文字特效。
 //
-//   node render_html.mjs <base.png> <copy.json> <effect> <out.png> --font-dir <dir> [--accent #7C5CFF]
+//   node render_html.mjs <base.png> <copy.json> <template_id> <out.png> --font-dir <dir> [--accent #7C5CFF] [--effect glow|stroke|gradient|neon|extrude]
 //
-// 字号按「大写字母高 / 画高」（capPct）换算；文字列超出 column.bottom 时整体缩小，任何一行不低于 minCapPct。
-// 输出同名 .json：每行实际字号、行数，以及在浏览器里量到的字形高度。
+// 版式数字和特效 CSS 都从 ../templates.md 里该模板的 textLayer 读（--effect 只用于对比演示，覆盖模板自带的 CSS）。
+// 字号按「参照字高 / 画高」（capPct）换算；文字列超出 column.bottom 时整体缩小，任何一行不低于 minCapPct。
+// 输出同名 .json：每行实际字号、行数、每个文字行的外框（供碰撞检查）。
 import { createRequire } from "node:module";
 const { chromium } = createRequire(import.meta.url)("playwright"); // 预装在全局，ESM import 解析不到
 import fs from "node:fs";
 import path from "node:path";
+import { fileURLToPath } from "node:url";
 
 const args = process.argv.slice(2);
 const opt = (k, d) => (args.includes(k) ? args[args.indexOf(k) + 1] : d);
-const [basePath, copyPath, effect, outPath] = args;
+const [basePath, copyPath, templateId, outPath] = args;
 const fontDir = path.resolve(opt("--font-dir"));
-const accent = opt("--accent", "#7C5CFF");
 const copy = JSON.parse(fs.readFileSync(copyPath, "utf8"));
 
-// 与 templates.md 里 dark-floating.textLayer 同一组数
+const md = fs.readFileSync(path.join(path.dirname(fileURLToPath(import.meta.url)), "..", "templates.md"), "utf8");
+const template = [...md.matchAll(/```json\n([\s\S]*?)\n```/g)].map((m) => JSON.parse(m[1])).find((b) => b.id === templateId);
+if (!template) throw new Error(`templates.md 里没有模板 ${templateId}`);
+const tl = template.textLayer;
+const accent = opt("--accent", template.palette.accentDefault.match(/#[0-9A-Fa-f]{6}/)[0]);
+const effect = opt("--effect", null);
 const spec = {
-  margin: 0.055, top: 0.055, maxWidth: 0.5, gap: 0.022, bottom: 0.5, baseline: 0.945, minCapPct: 2.5,
-  slots: {
-    badge: { capPct: 2.6, weight: 700 },
-    headline: { capPct: 4.6, weight: 800, lineHeight: 1.12 },
-    subheadline: { capPct: 2.7, weight: 400, lineHeight: 1.3 },
-    small: { capPct: 2.6, weight: 400, lineHeight: 1.3 },
-    brand: { capPct: 3.2, weight: 800 },
-  },
+  margin: tl.margin, top: tl.column.top, maxWidth: tl.column.maxWidth, gap: tl.column.gap, bottom: tl.column.bottom,
+  baseline: tl.baseline, minCapPct: tl.minCapPct, slots: tl.slots,
 };
 
 const hex = (h) => h.replace("#", "").match(/../g).map((x) => parseInt(x, 16));
 const [ar, ag, ab] = hex(accent);
 const mixW = (t) => `rgb(${[ar, ag, ab].map((c) => Math.round(c + (255 - c) * t)).join(",")})`;
 const A = (a) => `rgba(${ar},${ag},${ab},${a})`;
-const accentLight = mixW(0.45);
-const accentDark = `rgb(${[ar, ag, ab].map((c) => Math.round(c * 0.45)).join(",")})`;
+const accentLight = mixW(tl.accentLight);
+const accentDark = `rgb(${[ar, ag, ab].map((c) => Math.round(c * tl.accentDark)).join(",")})`;
 
-// 每种特效 = 一组 CSS；正式实现时每张模板带一组，写在模板的 textLayer.effect 里
+// 对比演示用的几组特效；正式使用的是模板自带的 textLayer.css
 const EFFECTS = {
   glow: `
     .headline { color:#fff; text-shadow: 0 0 .35em ${A(0.55)}, 0 .04em .12em rgba(0,0,0,.6); }
@@ -73,15 +73,16 @@ const html = `<!doctype html><html><head><meta charset="utf-8"><style>
 @font-face { font-family: Inter; src: url("${fileUrl(fontDir + "/Inter-var.ttf")}"); font-weight: 100 900; }
 @font-face { font-family: "Noto Sans Thai"; src: url("${fileUrl(fontDir + "/NotoSansThai-var.ttf")}"); font-weight: 100 900; }
 html,body { margin:0; padding:0; }
-#c { position:relative; width:var(--W); height:var(--H); background:url("${fileUrl(path.resolve(basePath))}") center/cover; overflow:hidden;
+#c { --accent:${accent}; --accent-light:${accentLight}; --accent-dark:${accentDark};
+     position:relative; width:var(--W); height:var(--H); background:url("${fileUrl(path.resolve(basePath))}") center/cover; overflow:hidden;
      font-family: Inter, "Noto Sans Thai", sans-serif; }
 .col { position:absolute; left:calc(var(--W) * ${spec.margin}); top:calc(var(--H) * ${spec.top}); width:calc(var(--W) * ${spec.maxWidth}); }
 .col > * { display:block; margin:0 0 calc(var(--H) * ${spec.gap}) 0; }
 .badge { display:inline-block !important; border-radius:999px; padding:.42em .9em; line-height:1; white-space:nowrap; }
 .foot { position:absolute; left:calc(var(--W) * ${spec.margin}); right:calc(var(--W) * ${spec.margin}); bottom:calc(var(--H) * ${(1 - spec.baseline).toFixed(3)});
         display:flex; align-items:flex-end; justify-content:space-between; gap:calc(var(--W) * .05); }
-.small { flex:1 1 auto; } .brand { flex:0 0 auto; letter-spacing:.04em; white-space:nowrap; line-height:1; }
-${EFFECTS[effect]}
+.small { flex:1 1 auto; } .brand { flex:0 0 auto; white-space:nowrap; line-height:1; }
+${effect ? EFFECTS[effect] : tl.css}
 </style></head><body><div id="c">
 <div class="col">
   ${copy.badge ? `<div><span class="badge t" data-slot="badge"></span></div>` : ""}
@@ -163,11 +164,12 @@ const report = await page.evaluate(async ({ copy, spec, W, H }) => {
   for (const el of document.querySelectorAll(".t")) {
     const r = document.createRange(); r.selectNodeContents(el);
     const lines = new Set([...r.getClientRects()].map((x) => Math.round(x.top))).size;
-    out.slots[el.dataset.slot] = { capPct: +el.dataset.cap, ref: el.dataset.ref, fontPx: Math.round(parseFloat(el.style.fontSize)), lines };
+    const rects = [...r.getClientRects()].map((x) => [x.left, x.top, x.right, x.bottom].map(Math.round));
+    out.slots[el.dataset.slot] = { capPct: +el.dataset.cap, ref: el.dataset.ref, fontPx: Math.round(parseFloat(el.style.fontSize)), lines, rects };
   }
   return out;
 }, { copy, spec, W, H });
 await page.screenshot({ path: outPath });
 await browser.close();
-fs.writeFileSync(outPath.replace(/\.png$/, ".json"), JSON.stringify({ effect, accent, ...report }, null, 1));
+fs.writeFileSync(outPath.replace(/\.png$/, ".json"), JSON.stringify({ template: templateId, effect: effect || tl.effect, accent, ...report }, null, 1));
 console.log(outPath, JSON.stringify(report));

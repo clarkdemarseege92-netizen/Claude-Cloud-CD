@@ -79,9 +79,10 @@ SaaS/线上服务。主体是单件物品或一个画面时效果最好。
 | 版式 | 左上一列左对齐：角标在最上，下面紧接标题、副标题（都在画面上部，副标题不碰主体），整列限制在画面左侧 55% 宽度内；小字左下；品牌名右下，与小字同一基线 |
 | 字体层级 | 角标、副标题、小字、品牌四行**同字号**（≥ 标题字高一半），只靠颜色和粗细区分。标题 6%（粗几何黑体，白，最多三行）/ 副标题 4%（常规黑体，强调色浅色调，最多两行）/ 角标 3.5%（粗黑体，强调色，细描边圆角框、无填充）/ 小字 4%（常规黑体，浅灰，与副标题一样大；提示词里叫 footer line，避免被当成脚注缩小）/ 品牌 3.5%（粗黑体，白，宽字距） |
 | 配色 | 近黑底、白、浅灰 + 强调色 `{accent}`，默认电光紫 `#7C5CFF`；两级强调：强调色本色 + 浅色调 |
-| 画面手法 | 精致 3D 渲染；主体周围一圈 5–7 个小的光滑 3D 漂浮物，前后错落，全部取自主体本身的简化符号，不带任何字；主体和漂浮物都清晰锐利，最多最远的一两个略虚 |
+| 画面手法 | 精致 3D 渲染（主体里的人物也用同一种 3D 质感，不做成照片）；主体周围一圈 5–7 个小的光滑 3D 漂浮物，前后错落，全部取自主体本身的简化符号，不带任何字；主体和漂浮物都清晰锐利，最多最远的一两个略虚 |
 | 光线与气质 | 左上一盏柔和主光 + 强调色轮廓光，主体下方一抹强调色辉光；沉静、高级、现代，大部分画面在暗部 |
-| avoid | 不画真实商标、应用图标、水印；不出现文案以外的任何字、字母、数字；无边框、无横幅文字框、无主体以外新增的人或物 |
+| avoid | 不画真实商标、应用图标、水印；不出现文案以外的任何字、字母、数字；无边框、无横幅文字框、无主体以外新增的人或物；不画单独漂浮的手、身体部位或手势 |
+| 文字特效（代码排字） | 柔和发光（glow）：标题白字 + 强调色光晕；副标题强调色浅色调 + 弱光晕；角标强调色描边胶囊 + 外发光；页脚浅灰；品牌白字 + 光晕。CSS 见 `textLayer.css`，颜色全部走 `--accent` 系列变量 |
 
 ```json
 {
@@ -91,7 +92,7 @@ SaaS/线上服务。主体是单件物品或一个画面时效果最好。
   "aspectRatio": "4:5",
   "medium": "A polished 3D-rendered promotional poster",
   "canvas": "A deep, almost black background fills the whole frame. The subject sits slightly right of centre and takes up a little over half of the frame height, with wide dark margins on every side. All text is kept close to the edges, set directly on the dark background with nothing behind it, no panel, box, banner or strip; the middle of the frame belongs to the subject alone.",
-  "technique": "A loose ring of five to seven small glossy 3D objects floats around the subject at different depths; each one is a simplified symbol taken from the subject itself rather than anything new, and none of them carries any lettering. Smooth clay-like 3D rendering with a soft sheen. The subject is in crisp, sharp focus with clean edges and fine detail, and so are the floating objects; only the one or two smallest objects farthest in the background may be very slightly softened.",
+  "technique": "A loose ring of five to seven small glossy 3D objects floats around the subject at different depths; each one is a simplified symbol taken from the subject itself rather than anything new, and none of them carries any lettering. Smooth clay-like 3D rendering with a soft sheen, and the subject, including any people in it, is rendered in exactly the same 3D style as the floating objects rather than as a photograph. The subject is in crisp, sharp focus with clean edges and fine detail, and so are the floating objects; only the one or two smallest objects farthest in the background may be very slightly softened.",
   "lighting": "Lit by one soft key light from the upper left and a thin rim light in the accent colour, with a faint accent-coloured glow pooling beneath the subject. The mood is calm, premium and modern, with most of the frame left in deep shadow.",
   "palette": {
     "base": "The colours stay restrained: near-black background, white for the headline and the brand name, light grey for the footer line, and the subject's own natural colours.",
@@ -116,7 +117,7 @@ SaaS/线上服务。主体是单件物品或一个画面时效果最好。
     "brand": { "heightPct": 3.5, "style": "set in a bold sans-serif in white with wide letter spacing" }
   },
   "canvasNoText": "A deep, almost black background fills the whole frame. The subject sits in the lower right part of the frame, its centre about three fifths of the way across and a little below the middle, and it takes up about half of the frame height. The upper-left area, a little over half the frame wide and the top half of the frame tall, is calm dark background with only a soft gradient and nothing in it, and so is a band along the bottom edge; the floating objects stay around the subject on the right and lower part of the frame and never drift into these areas.",
-  "avoidNoText": "Do not draw any real brand logo, trademark, app icon or watermark. No frames or borders, no banners or panels, and no extra people or objects that are not part of the subject or its floating ring.",
+  "avoidNoText": "Do not draw any real brand logo, trademark, app icon or watermark. No frames or borders, no banners or panels, and no extra people or objects that are not part of the subject or its floating ring. No hands, body parts or hand gestures floating on their own.",
   "textLayer": {
     "font": "geometric-sans",
     "margin": 0.055,
@@ -132,7 +133,10 @@ SaaS/线上服务。主体是单件物品或一个画面时效果最好。
       "brand": { "capPct": 3.2, "weight": 800, "color": "#FFFFFF", "tracking": 0.04, "maxLines": 1, "anchor": "bottom-right" }
     },
     "minCapPct": 2.5,
-    "accentLight": 0.45
+    "accentLight": 0.45,
+    "accentDark": 0.45,
+    "effect": "glow",
+    "css": ".headline { color:#fff; text-shadow: 0 0 .35em color-mix(in srgb, var(--accent) 55%, transparent), 0 .04em .12em rgba(0,0,0,.6); } .subheadline { color: var(--accent-light); text-shadow: 0 0 .5em color-mix(in srgb, var(--accent) 35%, transparent), 0 .04em .12em rgba(0,0,0,.6); } .badge { color: var(--accent); border: .09em solid var(--accent); box-shadow: 0 0 .6em color-mix(in srgb, var(--accent) 45%, transparent), inset 0 0 .4em color-mix(in srgb, var(--accent) 25%, transparent); } .small { color: #C9CAD6; text-shadow: 0 .04em .12em rgba(0,0,0,.7); } .brand { color: #fff; letter-spacing: .04em; text-shadow: 0 0 .3em color-mix(in srgb, var(--accent) 50%, transparent); }"
   },
   "sizeRelation": "The badge, the subheading, the footer line and the brand name are all set at the same text size, at least half the height of the headline letters; they differ from each other only in colour and weight, never in size.",
   "avoid": "Do not draw any real brand logo, trademark, app icon or watermark, and do not add any words, letters or numbers beyond the lines listed above. No frames or borders, no banners or text boxes, and no extra people or objects that are not part of the subject or its floating ring."
