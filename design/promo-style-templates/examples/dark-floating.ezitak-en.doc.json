@@ -1,0 +1,110 @@
+{
+ "version": 1,
+ "template": "dark-floating",
+ "canvas": {
+  "width": 1408,
+  "height": 1760
+ },
+ "base": "/abs/path/or/https-url/of/base.png",
+ "accent": "#7C5CFF",
+ "effect": "glow",
+ "lines": [
+  {
+   "slot": "badge",
+   "text": "Free trial",
+   "segments": [
+    "Free ",
+    "trial"
+   ],
+   "forceBreaks": [],
+   "x": 0.055,
+   "y": 0.055,
+   "w": 0.5,
+   "align": "left",
+   "capPct": 2.5,
+   "weight": 700,
+   "color": "accent",
+   "lineHeight": 1
+  },
+  {
+   "slot": "headline",
+   "text": "Every message, answered in seconds",
+   "segments": [
+    "Every ",
+    "message, ",
+    "answered ",
+    "in ",
+    "seconds"
+   ],
+   "forceBreaks": [],
+   "x": 0.055,
+   "y": 0.1452,
+   "w": 0.5,
+   "align": "left",
+   "capPct": 3.77,
+   "weight": 800,
+   "color": "white",
+   "lineHeight": 1.12
+  },
+  {
+   "slot": "subheadline",
+   "text": "Answers questions and takes bookings in any language",
+   "segments": [
+    "Answers ",
+    "questions ",
+    "and ",
+    "takes ",
+    "bookings ",
+    "in ",
+    "any ",
+    "language"
+   ],
+   "forceBreaks": [],
+   "x": 0.055,
+   "y": 0.3393,
+   "w": 0.5,
+   "align": "left",
+   "capPct": 2.5,
+   "weight": 400,
+   "color": "accentLight",
+   "lineHeight": 1.3
+  },
+  {
+   "slot": "small",
+   "text": "Social posts drafted for you, too",
+   "segments": [
+    "Social ",
+    "posts ",
+    "drafted ",
+    "for ",
+    "you, ",
+    "too"
+   ],
+   "forceBreaks": [],
+   "x": 0.055,
+   "y": 0.899,
+   "w": 0.6482,
+   "align": "left",
+   "capPct": 2.6,
+   "weight": 400,
+   "color": "grey",
+   "lineHeight": 1.3
+  },
+  {
+   "slot": "brand",
+   "text": "EziTak",
+   "segments": [
+    "EziTak"
+   ],
+   "forceBreaks": [],
+   "x": 0.7532,
+   "y": 0.9012,
+   "w": 0.1918,
+   "align": "right",
+   "capPct": 3.2,
+   "weight": 800,
+   "color": "white",
+   "lineHeight": 1
+  }
+ ]
+}

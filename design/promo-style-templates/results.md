@@ -200,3 +200,18 @@ Do not translate, shorten, repeat or restyle the wording of any line. Do not add
 | 咖啡 | meta/muse-image | $0.01 | 无。漂浮物＝咖啡豆、小碟、勺子、叶子、蒸汽、液滴 | ✅ | 同上 | 全部 0% | ✅ 合格 |
 
 缩略图：`thumbnails/dark-floating.webp`（540×675，EziTak 示例主体 + 英文文案）。
+
+## 文字图层文档（TextLayerDoc v1）落地 —— 零 API 费用
+
+- 格式写入 `templates.md`「代码排字模式」一节；`tools/render_html.mjs` 改为 `init` / `render` / `validate` 三个子命令，版式数字、颜色角色、特效预设全部从模板 `textLayer` 读。
+- `tools/render_text.py`（Pillow 原型）已删除：被 Chromium 渲染器取代，保留两套会让编辑器和导出结果对不上。上文 t6/t7 的记录仍是它出的结果。
+- dark-floating 的 `textLayer` 改为：初始值 + 约束（`safeMargin`、`minCapPct`/`maxCapPct`、`colors` 角色）+ 三个特效预设 `glow`（默认）/ `stroke` / `gradient`。
+
+验证（底图 t7）：
+
+| 用例 | 结果 |
+|---|---|
+| 英文 `init` → `render` | 文档通过校验；碰撞粗检全部 0%；无越界 |
+| 泰文 + 模拟识图断行单位（`examples/ezitak-th.segments.json`，**本轮没有调用 DeepSeek**，是我按词边界手工切的，需母语者复核） | 标题排成 "ทุกข้อความ / ตอบกลับ / ในไม่กี่วินาที"，**"ตอบกลับ" 不再被拆开** ✅；没有段内被迫断行；碰撞 0% |
+| 模拟编辑：换 `stroke` 特效、品牌色改 `#0F9D8A`、标题 `forceBreaks:[1]`、副标题下移 2% | 渲染正确，角标 / 描边 / 副标题浅色调都跟着品牌色变 ✅ |
+| 非法文档（effect=neon、capPct=1.8、segments 与 text 不一致、x 越界） | `validate` 报出全部 4 条，`render` 拒绝出图 ✅ |

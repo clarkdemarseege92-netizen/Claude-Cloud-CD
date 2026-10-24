@@ -1,175 +1,241 @@
-// 用 Chromium（Playwright）把文案按 HTML/CSS 排到无字底图上，支持 CSS 文字特效。
+// 文字图层：模板 + 文案 → TextLayerDoc（init）；TextLayerDoc → 成品图（render）。格式见 ../templates.md「文字图层文档」。
 //
-//   node render_html.mjs <base.png> <copy.json> <template_id> <out.png> --font-dir <dir> [--accent #7C5CFF] [--effect glow|stroke|gradient|neon|extrude]
+//   node render_html.mjs init   <base.png> <copy.json> <template_id> <doc.json> --font-dir <dir> [--accent #RRGGBB] [--effect id] [--segments seg.json]
+//   node render_html.mjs render <doc.json> <out.png> --font-dir <dir>
+//   node render_html.mjs validate <doc.json>
 //
-// 版式数字和特效 CSS 都从 ../templates.md 里该模板的 textLayer 读（--effect 只用于对比演示，覆盖模板自带的 CSS）。
-// 字号按「参照字高 / 画高」（capPct）换算；文字列超出 column.bottom 时整体缩小，任何一行不低于 minCapPct。
-// 输出同名 .json：每行实际字号、行数、每个文字行的外框（供碰撞检查）。
+// 编辑器读写的就是 doc.json；服务端只认 doc.json 出图，所以编辑器里看到的和导出的是同一套 HTML/CSS。
+// --segments：识图模型给的断行单位 {slot: ["段1", "段2", ...]}；没有时按空格切（空格留在前一段末尾）。
+// render 同时输出 <out>.json：每行实际行数、外框（供碰撞检查）、哪些段因放不下被迫段内断行。
 import { createRequire } from "node:module";
 const { chromium } = createRequire(import.meta.url)("playwright"); // 预装在全局，ESM import 解析不到
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
+const SLOTS = ["badge", "headline", "subheadline", "small", "brand"]; // 绘制顺序；槽名与产品代码 COPY_LINES 一致
+const COPY_LINE_MAX_CHARS = 80; // 与 promo-image-prompt.ts 同值
+const FONT_FILES = { "geometric-sans": ["Inter-var.ttf", "NotoSansThai-var.ttf"] };
+
 const args = process.argv.slice(2);
 const opt = (k, d) => (args.includes(k) ? args[args.indexOf(k) + 1] : d);
-const [basePath, copyPath, templateId, outPath] = args;
-const fontDir = path.resolve(opt("--font-dir"));
-const copy = JSON.parse(fs.readFileSync(copyPath, "utf8"));
+const cmd = args[0];
 
-const md = fs.readFileSync(path.join(path.dirname(fileURLToPath(import.meta.url)), "..", "templates.md"), "utf8");
-const template = [...md.matchAll(/```json\n([\s\S]*?)\n```/g)].map((m) => JSON.parse(m[1])).find((b) => b.id === templateId);
-if (!template) throw new Error(`templates.md 里没有模板 ${templateId}`);
-const tl = template.textLayer;
-const accent = opt("--accent", template.palette.accentDefault.match(/#[0-9A-Fa-f]{6}/)[0]);
-const effect = opt("--effect", null);
-const spec = {
-  margin: tl.margin, top: tl.column.top, maxWidth: tl.column.maxWidth, gap: tl.column.gap, bottom: tl.column.bottom,
-  baseline: tl.baseline, minCapPct: tl.minCapPct, slots: tl.slots,
-};
+function loadTemplate(id) {
+  const md = fs.readFileSync(path.join(path.dirname(fileURLToPath(import.meta.url)), "..", "templates.md"), "utf8");
+  const t = [...md.matchAll(/```json\n([\s\S]*?)\n```/g)].map((m) => JSON.parse(m[1])).find((b) => b.id === id);
+  if (!t) throw new Error(`templates.md 里没有模板 ${id}`);
+  return t;
+}
 
-const hex = (h) => h.replace("#", "").match(/../g).map((x) => parseInt(x, 16));
-const [ar, ag, ab] = hex(accent);
-const mixW = (t) => `rgb(${[ar, ag, ab].map((c) => Math.round(c + (255 - c) * t)).join(",")})`;
-const A = (a) => `rgba(${ar},${ag},${ab},${a})`;
-const accentLight = mixW(tl.accentLight);
-const accentDark = `rgb(${[ar, ag, ab].map((c) => Math.round(c * tl.accentDark)).join(",")})`;
+/** 按空格切段：空格跟在前一段末尾，拼回去与原文逐字相同。 */
+const splitAtSpaces = (text) => text.match(/[^ ]+ */g) ?? [text];
 
-// 对比演示用的几组特效；正式使用的是模板自带的 textLayer.css
-const EFFECTS = {
-  glow: `
-    .headline { color:#fff; text-shadow: 0 0 .35em ${A(0.55)}, 0 .04em .12em rgba(0,0,0,.6); }
-    .subheadline { color:${accentLight}; text-shadow: 0 0 .5em ${A(0.35)}; }
-    .badge { color:${accent}; border:.09em solid ${accent}; box-shadow: 0 0 .6em ${A(0.45)}, inset 0 0 .4em ${A(0.25)}; }
-    .small { color:#C9CAD6; } .brand { color:#fff; text-shadow: 0 0 .3em ${A(0.5)}; }`,
-  stroke: `
-    .headline { color:#fff; -webkit-text-stroke: .07em ${accent}; paint-order: stroke fill; text-shadow: .05em .07em 0 rgba(0,0,0,.85); }
-    .subheadline { color:#fff; -webkit-text-stroke: .05em ${accentDark}; paint-order: stroke fill; }
-    .badge { color:#fff; background:${accent}; border:.09em solid ${accent}; }
-    .small { color:#fff; -webkit-text-stroke: .05em #000; paint-order: stroke fill; }
-    .brand { color:#fff; -webkit-text-stroke: .07em ${accent}; paint-order: stroke fill; }`,
-  gradient: `
-    .headline { background: linear-gradient(180deg, #ffffff 15%, ${accentLight} 70%, ${accent} 100%); -webkit-background-clip:text; background-clip:text; color:transparent; filter: drop-shadow(0 .05em .15em rgba(0,0,0,.6)); }
-    .subheadline { color:${accentLight}; }
-    .badge { color:#fff; background: linear-gradient(90deg, ${accent}, ${accentLight}); border:.09em solid transparent; }
-    .small { color:#C9CAD6; }
-    .brand { background: linear-gradient(90deg, #fff, ${accentLight}); -webkit-background-clip:text; background-clip:text; color:transparent; }`,
-  neon: `
-    .headline { color:#fff; text-shadow: 0 0 .04em #fff, 0 0 .15em ${accent}, 0 0 .4em ${accent}, 0 0 .9em ${accent}, 0 0 1.6em ${A(0.6)}; }
-    .subheadline { color:#f2edff; text-shadow: 0 0 .2em ${accent}, 0 0 .6em ${A(0.7)}; }
-    .badge { color:#fff; border:.09em solid #fff; box-shadow: 0 0 .25em ${accent}, 0 0 .7em ${accent}, inset 0 0 .4em ${accent}; text-shadow: 0 0 .3em ${accent}; }
-    .small { color:#e8e6f5; text-shadow: 0 0 .4em ${A(0.6)}; }
-    .brand { color:#fff; text-shadow: 0 0 .1em #fff, 0 0 .4em ${accent}, 0 0 1em ${accent}; }`,
-  extrude: `
-    .headline { color:#fff; text-shadow: ${Array.from({ length: 9 }, (_, i) => `${(i + 1) * 0.006}em ${(i + 1) * 0.008}em 0 ${i < 8 ? accentDark : "rgba(0,0,0,.6)"}`).join(", ")}, .1em .14em .25em rgba(0,0,0,.7); }
-    .subheadline { color:${accentLight}; text-shadow: .03em .04em 0 rgba(0,0,0,.8); }
-    .badge { color:#fff; background:${accent}; border:.09em solid ${accent}; box-shadow: .1em .14em 0 ${accentDark}; }
-    .small { color:#C9CAD6; }
-    .brand { color:#fff; text-shadow: ${Array.from({ length: 6 }, (_, i) => `${(i + 1) * 0.006}em ${(i + 1) * 0.008}em 0 ${accentDark}`).join(", ")}; }`,
-};
+/** 服务端必须做的校验——doc 来自浏览器，不可信。返回错误列表。 */
+function validate(doc) {
+  const errs = [];
+  let t;
+  try { t = loadTemplate(doc.template); } catch (e) { return [e.message]; }
+  const tl = t.textLayer;
+  const m = tl.safeMargin;
+  if (doc.version !== 1) errs.push("version 必须是 1");
+  if (!/^#[0-9A-Fa-f]{6}$/.test(doc.accent ?? "")) errs.push("accent 必须是 #RRGGBB");
+  if (!tl.effects[doc.effect]) errs.push(`effect 只能是 ${Object.keys(tl.effects).join(" / ")}`);
+  const seen = new Set();
+  for (const [i, l] of (doc.lines ?? []).entries()) {
+    const at = `lines[${i}](${l.slot})`;
+    if (!SLOTS.includes(l.slot) || seen.has(l.slot)) errs.push(`${at}: 槽名无效或重复`);
+    seen.add(l.slot);
+    if (typeof l.text !== "string" || !l.text.trim() || l.text.length > COPY_LINE_MAX_CHARS) errs.push(`${at}: text 为空或超过 ${COPY_LINE_MAX_CHARS} 字`);
+    if (!Array.isArray(l.segments) || l.segments.join("") !== l.text) errs.push(`${at}: segments 拼起来必须与 text 逐字相同`);
+    if ((l.forceBreaks ?? []).some((k) => !Number.isInteger(k) || k < 1 || k >= (l.segments?.length ?? 0))) errs.push(`${at}: forceBreaks 下标越界`);
+    if (!(l.capPct >= tl.minCapPct && l.capPct <= tl.maxCapPct)) errs.push(`${at}: capPct 必须在 ${tl.minCapPct}–${tl.maxCapPct}`);
+    if (!(l.x >= m && l.y >= m && l.w > 0 && l.x + l.w <= 1 - m + 1e-6 && l.y < 1 - m)) errs.push(`${at}: 外框超出安全边距 ${m}`);
+    if (!tl.colors[l.color]) errs.push(`${at}: color 只能是 ${Object.keys(tl.colors).join(" / ")}`);
+    if (!["left", "right", "center"].includes(l.align)) errs.push(`${at}: align 无效`);
+    if (!(l.weight >= 100 && l.weight <= 900)) errs.push(`${at}: weight 无效`);
+    if (!(l.lineHeight >= 0.8 && l.lineHeight <= 2)) errs.push(`${at}: lineHeight 无效`);
+  }
+  return errs;
+}
 
-const fileUrl = (p) => "file://" + p;
-const html = `<!doctype html><html><head><meta charset="utf-8"><style>
-@font-face { font-family: Inter; src: url("${fileUrl(fontDir + "/Inter-var.ttf")}"); font-weight: 100 900; }
-@font-face { font-family: "Noto Sans Thai"; src: url("${fileUrl(fontDir + "/NotoSansThai-var.ttf")}"); font-weight: 100 900; }
+function pageHtml(doc, fontDir, W, H) {
+  const tl = loadTemplate(doc.template).textLayer;
+  const [r, g, b] = doc.accent.slice(1).match(/../g).map((x) => parseInt(x, 16));
+  const accentLight = `rgb(${[r, g, b].map((c) => Math.round(c + (255 - c) * tl.accentLight)).join(",")})`;
+  const accentDark = `rgb(${[r, g, b].map((c) => Math.round(c * tl.accentDark)).join(",")})`;
+  const roleColor = (role) => ({ accent: "var(--accent)", accentLight: "var(--accent-light)" })[tl.colors[role]] ?? tl.colors[role];
+  const files = FONT_FILES[tl.fontFamily];
+  const fonts = files.map((f, i) => `@font-face { font-family: F${i}; src: url("file://${fontDir}/${f}"); font-weight: 100 900; }`).join("\n");
+  const family = files.map((_, i) => `F${i}`).join(", ");
+  const esc = (s) => s.replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
+  const lines = doc.lines.map((l) => {
+    const pill = tl.slots[l.slot]?.pill;
+    // 段与段之间才允许换行（<wbr>）；forceBreaks 指定的段前强制换行（<br>）
+    const inner = l.segments.map((s, k) => `${k ? ((l.forceBreaks ?? []).includes(k) ? "<br>" : "<wbr>") : ""}<span class="seg">${esc(s)}</span>`).join("");
+    const box = pill ? `width:max-content; max-width:${l.w * W}px; padding:.42em .9em; border-radius:999px;` : `width:${l.w * W}px;`;
+    return `<div class="t ${l.slot}" data-slot="${l.slot}" data-cap="${l.capPct}" style="left:${l.x * W}px; top:${l.y * H}px; ${box} text-align:${l.align}; font-weight:${l.weight}; line-height:${l.lineHeight}; color:${roleColor(l.color)};">${inner}</div>`;
+  });
+  const bg = doc.base.startsWith("/") ? "file://" + doc.base : doc.base;
+  return `<!doctype html><html><head><meta charset="utf-8"><style>
+${fonts}
 html,body { margin:0; padding:0; }
-#c { --accent:${accent}; --accent-light:${accentLight}; --accent-dark:${accentDark};
-     position:relative; width:var(--W); height:var(--H); background:url("${fileUrl(path.resolve(basePath))}") center/cover; overflow:hidden;
-     font-family: Inter, "Noto Sans Thai", sans-serif; }
-.col { position:absolute; left:calc(var(--W) * ${spec.margin}); top:calc(var(--H) * ${spec.top}); width:calc(var(--W) * ${spec.maxWidth}); }
-.col > * { display:block; margin:0 0 calc(var(--H) * ${spec.gap}) 0; }
-.badge { display:inline-block !important; border-radius:999px; padding:.42em .9em; line-height:1; white-space:nowrap; }
-.foot { position:absolute; left:calc(var(--W) * ${spec.margin}); right:calc(var(--W) * ${spec.margin}); bottom:calc(var(--H) * ${(1 - spec.baseline).toFixed(3)});
-        display:flex; align-items:flex-end; justify-content:space-between; gap:calc(var(--W) * .05); }
-.small { flex:1 1 auto; } .brand { flex:0 0 auto; white-space:nowrap; line-height:1; }
-${effect ? EFFECTS[effect] : tl.css}
-</style></head><body><div id="c">
-<div class="col">
-  ${copy.badge ? `<div><span class="badge t" data-slot="badge"></span></div>` : ""}
-  ${copy.headline ? `<div class="headline t" data-slot="headline"></div>` : ""}
-  ${copy.subheadline ? `<div class="subheadline t" data-slot="subheadline"></div>` : ""}
-</div>
-<div class="foot">
-  ${copy.small ? `<div class="small t" data-slot="small"></div>` : "<div></div>"}
-  ${copy.brand ? `<div class="brand t" data-slot="brand"></div>` : ""}
-</div></div></body></html>`;
+#c { --accent:${doc.accent}; --accent-light:${accentLight}; --accent-dark:${accentDark};
+     position:relative; width:${W}px; height:${H}px; overflow:hidden; font-family:${family}, sans-serif;
+     background:url("${bg}") center/cover; }
+.t { position:absolute; box-sizing:border-box; }
+.seg { white-space:nowrap; }
+${tl.effects[doc.effect]}
+</style></head><body><div id="c">${lines.join("\n")}</div></body></html>`;
+}
 
-const tmpHtml = outPath.replace(/\.png$/, ".html");
-fs.writeFileSync(tmpHtml, html);
-
-const browser = await chromium.launch();
-const { width: W, height: H } = await (async () => {
-  const p = await browser.newPage();
-  await p.goto(fileUrl(path.resolve(basePath)));
-  const s = await p.evaluate(() => ({ width: document.images[0].naturalWidth, height: document.images[0].naturalHeight }));
-  await p.close();
-  return s;
-})();
-const page = await browser.newPage({ viewport: { width: W, height: H } });
-await page.goto(fileUrl(path.resolve(tmpHtml)));
-const report = await page.evaluate(async ({ copy, spec, W, H }) => {
-  document.documentElement.style.setProperty("--W", W + "px");
-  document.documentElement.style.setProperty("--H", H + "px");
-  // 泰文等不用空格分词的文字：浏览器按词典断行，会把复合词拆开（实测 "ตอบกลับ" 被拆成两行）。
-  // 商户原文里的空格就是短语边界：每段包成不换行的 span，只在空格处换行；某段放不下时再放开（见下方 unlockLongChunks）。
-  const noSpaceScript = (t) => /[\u0E00-\u0E7F\u0E80-\u0EFF\u1000-\u109F\u1780-\u17FF]/.test(t);
-  for (const el of document.querySelectorAll(".t")) {
-    const text = copy[el.dataset.slot];
-    if (noSpaceScript(text) && text.includes(" ")) {
-      el.textContent = "";
-      text.split(" ").forEach((chunk, i) => {
-        if (i) el.append(" ");
-        const sp = document.createElement("span");
-        sp.className = "chunk"; sp.style.whiteSpace = "nowrap"; sp.textContent = chunk;
-        el.append(sp);
-      });
-    } else el.textContent = text;
-  }
-  await document.fonts.ready;
-  // 字高口径按文字体系取参照字：拉丁量大写 H、西里尔量 Н、泰文量辅音 ก（不含上下附加符号）、中日韩量整字 国。
-  // 同一字号下泰文辅音只有拉丁大写的约 3/4，不分体系的话泰文最小字会掉到 2% 以下（实测 1.99%）。
-  const cv = document.createElement("canvas").getContext("2d");
-  const refChar = (t) => /[\u0E00-\u0E7F]/.test(t) ? "ก" : /[\u3040-\u30FF\u4E00-\u9FFF]/.test(t) ? "国" : /[\u0400-\u04FF]/.test(t) ? "Н" : "H";
-  const ratioFor = (el) => {
-    cv.font = `${getComputedStyle(el).fontWeight} 1000px ${getComputedStyle(el).fontFamily}`;
-    const m = cv.measureText(refChar(el.textContent));
-    return (m.actualBoundingBoxAscent + (refChar(el.textContent) === "国" ? m.actualBoundingBoxDescent : 0)) / 1000;
-  };
-  const capRatio = (() => { cv.font = "400 1000px Inter"; return cv.measureText("H").actualBoundingBoxAscent / 1000; })();
-  const apply = (scale) => {
+/** 页面里：按每行的参照字定字号（拉丁 H / 西里尔 Н / 泰文 ก / 中日 国），再量外框、报告被迫段内断行的段。 */
+function sizeAndMeasure(page, H) {
+  return page.evaluate(async (H) => {
+    await document.fonts.ready;
+    const cv = document.createElement("canvas").getContext("2d");
+    const refChar = (t) => (/[฀-๿]/.test(t) ? "ก" : /[぀-ヿ一-鿿]/.test(t) ? "国" : /[Ѐ-ӿ]/.test(t) ? "Н" : "H");
     for (const el of document.querySelectorAll(".t")) {
-      const s = spec.slots[el.dataset.slot];
-      const cap = Math.max(s.capPct * (["badge", "headline", "subheadline"].includes(el.dataset.slot) ? scale : 1), spec.minCapPct);
-      el.style.fontWeight = s.weight;
-      el.dataset.ref = refChar(el.textContent);
-      el.style.fontSize = (cap / 100 * H) / ratioFor(el) + "px";
-      el.style.fontWeight = s.weight;
-      if (s.lineHeight) el.style.lineHeight = s.lineHeight;
-      el.dataset.cap = cap.toFixed(2);
+      const cs = getComputedStyle(el);
+      const ref = refChar(el.textContent);
+      cv.font = `${cs.fontWeight} 1000px ${cs.fontFamily}`;
+      const mt = cv.measureText(ref);
+      const ratio = (mt.actualBoundingBoxAscent + (ref === "国" ? mt.actualBoundingBoxDescent : 0)) / 1000;
+      el.style.fontSize = (+el.dataset.cap / 100) * H / ratio + "px";
     }
-  };
-  let scale = 1;
-  apply(scale);
-  const colBottom = () => document.querySelector(".col").getBoundingClientRect().bottom - H * spec.gap;
-  const tooWide = () => [...document.querySelectorAll(".chunk")].filter(
-    (sp) => sp.style.whiteSpace === "nowrap" && sp.getBoundingClientRect().width > sp.parentElement.getBoundingClientRect().width + 1);
-  // 先缩字号，让每段短语都放得进一行、文字列也不越过空白区底边
-  // 为了让短语不拆行最多缩到 0.75 倍，再小标题就和正文一样大、层级没了（实测泰文缩到 0.56 倍时标题只剩 2.58%）
-  while (tooWide().length && scale > 0.75) { scale -= 0.02; apply(scale); }
-  while (colBottom() > spec.bottom * H && scale > 0.5) { scale -= 0.02; apply(scale); }
-  // 缩到最小字号仍放不下的短语 → 只对那一段放开断行，绝不让字溢出画面；放开后再按高度收一次
-  const unlocked = tooWide().map((sp) => { sp.style.whiteSpace = "normal"; return sp.textContent; });
-  while (colBottom() > spec.bottom * H && scale > 0.5) { scale -= 0.02; apply(scale); }
-  const out = { unlockedChunks: unlocked, capRatio: +capRatio.toFixed(3), scale: +scale.toFixed(2), columnBottomPct: +(colBottom() / H * 100).toFixed(1), slots: {} };
-  for (const el of document.querySelectorAll(".t")) {
-    const r = document.createRange(); r.selectNodeContents(el);
-    const lines = new Set([...r.getClientRects()].map((x) => Math.round(x.top))).size;
-    const rects = [...r.getClientRects()].map((x) => [x.left, x.top, x.right, x.bottom].map(Math.round));
-    out.slots[el.dataset.slot] = { capPct: +el.dataset.cap, ref: el.dataset.ref, fontPx: Math.round(parseFloat(el.style.fontSize)), lines, rects };
+    const out = {};
+    for (const el of document.querySelectorAll(".t")) {
+      // 某段比框还宽 → 只对这一段放开断行，绝不让字溢出
+      const unlocked = [];
+      const inner = el.clientWidth - parseFloat(getComputedStyle(el).paddingLeft) - parseFloat(getComputedStyle(el).paddingRight);
+      for (const sp of el.querySelectorAll(".seg")) {
+        if (sp.getBoundingClientRect().width > inner + 1) { sp.style.whiteSpace = "normal"; unlocked.push(sp.textContent); }
+      }
+      const r = document.createRange(); r.selectNodeContents(el);
+      const rects = [...r.getClientRects()].filter((x) => x.width > 0).map((x) => [x.left, x.top, x.right, x.bottom].map(Math.round));
+      const box = el.getBoundingClientRect();
+      out[el.dataset.slot] = {
+        ref: refChar(el.textContent), fontPx: Math.round(parseFloat(el.style.fontSize)),
+        lines: new Set(rects.map((x) => x[1])).size, rects, unlockedSegments: unlocked,
+        box: [box.left, box.top, box.right, box.bottom].map(Math.round),
+      };
+    }
+    return out;
+  }, H);
+}
+
+let browser;
+async function withPage(W, H, html, fn) {
+  browser ??= await chromium.launch();
+  const page = await browser.newPage({ viewport: { width: W, height: H } });
+  try {
+    const tmp = path.join(fs.mkdtempSync(path.join(process.env.TMPDIR ?? "/tmp", "tl-")), "page.html");
+    fs.writeFileSync(tmp, html);
+    await page.goto("file://" + tmp);
+    return await fn(page);
+  } finally {
+    await page.close();
   }
-  return out;
-}, { copy, spec, W, H });
-await page.screenshot({ path: outPath });
-await browser.close();
-fs.writeFileSync(outPath.replace(/\.png$/, ".json"), JSON.stringify({ template: templateId, effect: effect || tl.effect, accent, ...report }, null, 1));
-console.log(outPath, JSON.stringify(report));
+}
+
+async function imageSize(p) {
+  return withPage(100, 100, `<img src="file://${path.resolve(p)}">`, (page) =>
+    page.evaluate(async () => { await document.images[0].decode(); return { W: document.images[0].naturalWidth, H: document.images[0].naturalHeight }; }));
+}
+
+async function render(doc, outPng, fontDir) {
+  const errs = validate(doc);
+  if (errs.length) throw new Error("文字图层文档不合法：\n" + errs.join("\n"));
+  const { width: W, height: H } = doc.canvas;
+  const slots = await withPage(W, H, pageHtml(doc, fontDir, W, H), async (page) => {
+    const r = await sizeAndMeasure(page, H);
+    await page.screenshot({ path: outPng });
+    return r;
+  });
+  const m = loadTemplate(doc.template).textLayer.safeMargin;
+  // 文字实际排出来越过安全边距（例如商户把字号拉大、行数变多）→ 报给编辑器，由它提示商户
+  const outsideSafeArea = Object.entries(slots).filter(([, v]) => v.box[3] > H * (1 - m) + 1 || v.box[2] > W * (1 - m) + 1).map(([k]) => k);
+  const full = { slots, outsideSafeArea };
+  fs.writeFileSync(outPng.replace(/\.png$/, ".json"), JSON.stringify(full, null, 1));
+  return full;
+}
+
+/** 模板 + 文案 → 初始文档：按模板 initialLayout 排一遍（左上文字列 + 底边一行），把每行的位置写成绝对坐标（画面比例）。 */
+async function init(basePath, copy, templateId, effect, accent, segmentsHint, fontDir) {
+  const t = loadTemplate(templateId);
+  const tl = t.textLayer;
+  const L = tl.initialLayout;
+  const { W, H } = await imageSize(basePath);
+  const filled = SLOTS.filter((s) => (copy[s] ?? "").trim());
+  const mk = (slot, x, y, w, align, scale = 1) => {
+    const d = tl.slots[slot];
+    const text = copy[slot].trim();
+    return {
+      slot, text, segments: segmentsHint?.[slot] ?? splitAtSpaces(text), forceBreaks: [],
+      x, y, w, align, capPct: +Math.max(d.capPct * scale, tl.minCapPct).toFixed(2),
+      weight: d.weight, color: d.color, lineHeight: d.lineHeight,
+    };
+  };
+  const doc = {
+    version: 1, template: templateId, canvas: { width: W, height: H }, base: path.resolve(basePath),
+    accent: accent ?? t.palette.accentDefault.match(/#[0-9A-Fa-f]{6}/)[0], effect: effect ?? tl.defaultEffect, lines: [],
+  };
+  const measure = (lines) => withPage(W, H, pageHtml({ ...doc, lines }, fontDir, W, H), (page) => sizeAndMeasure(page, H));
+
+  // 左上文字列：角标 → 标题 → 副标题，逐行叠放。列底越过 columnBottom、或有段放不进列宽 → 整体缩小再排；
+  // 字号不低于 minCapPct；为了让一段不被拆开最多缩到 widthShrinkFloor 倍（再小标题就失去层级）。
+  const colSlots = ["badge", "headline", "subheadline"].filter((s) => filled.includes(s));
+  for (let scale = 1; ; scale -= 0.02) {
+    const lines = colSlots.map((s) => mk(s, L.margin, L.columnTop, L.columnMaxWidth, "left", scale));
+    const r = await measure(lines);
+    let y = L.columnTop;
+    for (const l of lines) { l.y = +y.toFixed(4); y += (r[l.slot].box[3] - r[l.slot].box[1]) / H + L.columnGap; }
+    const tooLow = y - L.columnGap > L.columnBottom;
+    const split = colSlots.some((s) => r[s].unlockedSegments.length);
+    if ((tooLow && scale - 0.02 >= 0.5) || (split && scale - 0.02 >= L.widthShrinkFloor)) continue;
+    doc.lines.push(...lines);
+    break;
+  }
+  // 底边：品牌名右对齐、页脚左对齐，底边对齐在 baseline；页脚宽 = 画宽 - 两侧边距 - 品牌名宽 - 间隔
+  let brandW = 0;
+  if (filled.includes("brand")) {
+    const r = await measure([mk("brand", L.margin, 0.5, 0.6, "left")]);
+    const s = r.brand.rects[0];
+    brandW = +((s[2] - s[0]) / W + 0.01).toFixed(4);
+    doc.lines.push(mk("brand", +(1 - L.margin - brandW).toFixed(4), +(L.baseline - (r.brand.box[3] - r.brand.box[1]) / H).toFixed(4), brandW, "right"));
+  }
+  if (filled.includes("small")) {
+    const w = +(1 - 2 * L.margin - brandW - 0.05).toFixed(4);
+    const r = await measure([mk("small", L.margin, 0.5, w, "left")]);
+    doc.lines.push(mk("small", L.margin, +(L.baseline - (r.small.box[3] - r.small.box[1]) / H).toFixed(4), w, "left"));
+  }
+  doc.lines.sort((a, b) => SLOTS.indexOf(a.slot) - SLOTS.indexOf(b.slot));
+  return doc;
+}
+
+const fontDir = path.resolve(opt("--font-dir", "."));
+try {
+  if (cmd === "init") {
+    const [, base, copyPath, templateId, docPath] = args;
+    const copy = JSON.parse(fs.readFileSync(copyPath, "utf8"));
+    const seg = opt("--segments") ? JSON.parse(fs.readFileSync(opt("--segments"), "utf8")) : null;
+    const doc = await init(base, copy, templateId, opt("--effect"), opt("--accent"), seg, fontDir);
+    fs.writeFileSync(docPath, JSON.stringify(doc, null, 1));
+    const errs = validate(doc);
+    console.log(docPath, errs.length ? "INVALID:\n" + errs.join("\n") : "valid");
+  } else if (cmd === "render") {
+    const [, docPath, out] = args;
+    const r = await render(JSON.parse(fs.readFileSync(docPath, "utf8")), out, fontDir);
+    const brief = Object.fromEntries(Object.entries(r.slots).map(([k, v]) => [k, { lines: v.lines, fontPx: v.fontPx, unlocked: v.unlockedSegments }]));
+    console.log(out, JSON.stringify(brief), "outsideSafeArea:", JSON.stringify(r.outsideSafeArea));
+  } else if (cmd === "validate") {
+    const errs = validate(JSON.parse(fs.readFileSync(args[1], "utf8")));
+    console.log(errs.length ? errs.join("\n") : "valid");
+    process.exitCode = errs.length ? 1 : 0;
+  } else {
+    console.error("用法见文件头");
+    process.exitCode = 2;
+  }
+} finally {
+  await browser?.close();
+}
