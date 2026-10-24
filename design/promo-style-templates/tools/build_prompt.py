@@ -52,14 +52,17 @@ def build(template, subject, copy, accent=None, common=None, slot_names=None):
             ty = t["typography"][s]
             pct = f"{ty['heightPct']:g}"
             sentences.append(
-                f"The {slot_names[s]} reads \"{copy[s].strip()}\": {ty['style']}, with capital letters about {pct}% of the image height tall, {t['layout'][s]}."
+                f"The {slot_names[s]} reads \"{copy[s].strip()}\": {ty['style']}, with letters about {pct}% of the image height tall, {t['layout'][s]}."
             )
+        if t.get("sizeRelation"):
+            sentences.append(t["sizeRelation"])
         if "brand" in filled:
             sentences.append(common["copyClosing"].format(count=NUM_WORDS[n], brand=f"\"{copy['brand'].strip()}\""))
         else:
             sentences.append(common["copyClosingNoBrand"].format(count=NUM_WORDS[n]))
         min_pct = min(t["typography"][s]["heightPct"] for s in filled)
         sentences.append(common["minSize"].format(minPct=f"{min_pct:g}"))
+        sentences.append(common["caseRule"])
     sentences.append(t["avoid"])
     sentences.append(common["fixedTail"])
     return "\n\n".join(sentences)
