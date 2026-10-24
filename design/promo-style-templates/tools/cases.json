@@ -1,0 +1,33 @@
+{
+  "copy": {
+    "ezitak-en": {
+      "headline": "Every message, answered in seconds",
+      "subheadline": "Answers questions and takes bookings in any language",
+      "badge": "Free trial",
+      "small": "Social posts drafted for you, too",
+      "brand": "EziTak"
+    }
+  },
+  "cases": {
+    "ind-massage": {
+      "kind": "industry",
+      "subject": "a massage therapist giving a seated client a neck and shoulder massage",
+      "copy": "ezitak-en"
+    },
+    "ind-suv": {
+      "kind": "industry",
+      "subject": "a white SUV",
+      "copy": "ezitak-en"
+    },
+    "ind-coffee": {
+      "kind": "industry",
+      "subject": "a cup of coffee on a table",
+      "copy": "ezitak-en"
+    },
+    "lang-en": {
+      "kind": "language",
+      "subject": "a sleek modern smartphone standing upright at a slight angle, its bright screen showing a chat conversation of rounded message bubbles in teal, violet and white, and below them an appointment confirmation card with a large green check mark and a small calendar symbol; the writing inside the bubbles and the card is tiny and softly blurred so that no words can be read",
+      "copy": "ezitak-en"
+    }
+  }
+}

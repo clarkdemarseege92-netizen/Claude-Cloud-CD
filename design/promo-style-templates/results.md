@@ -1,0 +1,154 @@
+# 验收结果
+
+> 量字高的口径见 templates.md「通用约定」。工具：`tools/gen.py` 出图，`tools/measure.py` 放大量像素。
+> 本轮按你的决定**只做英文**：行业 3 张的主体和文案都用英文（原计划行业 3 张用中文文案，中/泰/日/俄语言图暂缓）。
+
+## 型号
+
+- 主用：Meta Muse Image —— **型号 id 未核实**（openrouter.ai 被环境网络策略拦截）
+- 备用：ByteDance Seedream 5.0 Flash —— **型号 id 未核实**
+
+## 1. dark-floating（深色漂浮）· 第 1 轮
+
+| 图 | 型号 | 多余内容 | 文字逐字核对 | 最小字高 | 结论 |
+|---|---|---|---|---|---|
+| 行业 1：按摩师在做肩颈按摩 | — | 待出图 | 待出图 | 待出图 | 待出图 |
+| 行业 2：一辆白色 SUV | — | 待出图 | 待出图 | 待出图 | 待出图 |
+| 行业 3：桌上的一杯咖啡 | — | 待出图 | 待出图 | 待出图 | 待出图 |
+| 语言：英文（EziTak 示例主体） | — | 待出图 | 待出图 | 待出图 | 待出图 |
+
+### 行业 1：按摩师在做肩颈按摩（`ind-massage`）
+
+提示词全文：
+
+```text
+A polished 3D-rendered promotional poster in a portrait 4:5 format, showing a massage therapist giving a seated client a neck and shoulder massage.
+
+A deep, almost black background fills the whole frame. The subject sits in the centre and takes up a little over half of the frame height, with wide dark margins on every side. All text is small and kept close to the edges, set directly on the dark background with nothing behind it, no panel, box, banner or strip; the middle of the frame belongs to the subject alone.
+
+A loose ring of five to seven small glossy 3D objects floats around the subject at different depths; each one is a simplified symbol taken from the subject itself rather than anything new, and none of them carries any lettering. Smooth clay-like 3D rendering with a soft sheen and a shallow depth of field, so the farthest floating objects blur slightly.
+
+Lit by one soft key light from the upper left and a thin rim light in the accent colour, with a faint accent-coloured glow pooling beneath the subject. The mood is calm, premium and modern, with most of the frame left in deep shadow.
+
+The colours stay restrained: near-black background, white for the headline and the brand name, soft grey for the small line, and the subject's own natural colours. The accent colour is electric violet (#7C5CFF). The accent colour appears on the badge, in the rim light and on two or three of the floating objects; a lighter tint of the same accent is used for the subheading. No other saturated colours are added to the background or the text.
+
+The image carries exactly five lines of text, each written exactly as given below.
+
+The headline reads "Every message, answered in seconds": set in a heavy geometric sans-serif in white, in no more than three lines, about 5% of the image height tall, placed directly under the badge, aligned to the left margin and spanning no more than about three quarters of the frame width.
+
+The subheading reads "Answers questions and takes bookings in any language": set in a regular-weight sans-serif in the light tint of the accent colour, in no more than two lines, about 3.2% of the image height tall, placed directly under the headline with the same left alignment.
+
+The badge reads "Free trial": set in a bold sans-serif in the accent colour inside a thin rounded outline of the same colour, with no fill, about 3% of the image height tall, placed in the top-left corner on the top and left margins, above the headline.
+
+The small line reads "Social posts drafted for you, too": set in a light sans-serif in soft grey, about 3% of the image height tall, placed in the bottom-left corner on the bottom margin.
+
+The brand name reads "EziTak": set in a bold sans-serif in white with wide letter spacing, about 3% of the image height tall, placed in the bottom-right corner on the same baseline as the small line.
+
+These five lines are the only words anywhere in the image. Write the brand name "EziTak" exactly as given, as plain lettering, not designed as a logo, emblem or monogram.
+
+Do not draw any real brand logo, trademark, app icon or watermark, and do not add any words, letters or numbers beyond the lines listed above. No frames or borders, no banners or text boxes, and no extra people or objects that are not part of the subject or its floating ring.
+
+Do not translate, shorten, repeat or restyle the wording of any line. Do not add religious or cultural symbols unless the subject itself asks for them.
+```
+
+### 行业 2：一辆白色 SUV（`ind-suv`）
+
+提示词全文：
+
+```text
+A polished 3D-rendered promotional poster in a portrait 4:5 format, showing a white SUV.
+
+A deep, almost black background fills the whole frame. The subject sits in the centre and takes up a little over half of the frame height, with wide dark margins on every side. All text is small and kept close to the edges, set directly on the dark background with nothing behind it, no panel, box, banner or strip; the middle of the frame belongs to the subject alone.
+
+A loose ring of five to seven small glossy 3D objects floats around the subject at different depths; each one is a simplified symbol taken from the subject itself rather than anything new, and none of them carries any lettering. Smooth clay-like 3D rendering with a soft sheen and a shallow depth of field, so the farthest floating objects blur slightly.
+
+Lit by one soft key light from the upper left and a thin rim light in the accent colour, with a faint accent-coloured glow pooling beneath the subject. The mood is calm, premium and modern, with most of the frame left in deep shadow.
+
+The colours stay restrained: near-black background, white for the headline and the brand name, soft grey for the small line, and the subject's own natural colours. The accent colour is electric violet (#7C5CFF). The accent colour appears on the badge, in the rim light and on two or three of the floating objects; a lighter tint of the same accent is used for the subheading. No other saturated colours are added to the background or the text.
+
+The image carries exactly five lines of text, each written exactly as given below.
+
+The headline reads "Every message, answered in seconds": set in a heavy geometric sans-serif in white, in no more than three lines, about 5% of the image height tall, placed directly under the badge, aligned to the left margin and spanning no more than about three quarters of the frame width.
+
+The subheading reads "Answers questions and takes bookings in any language": set in a regular-weight sans-serif in the light tint of the accent colour, in no more than two lines, about 3.2% of the image height tall, placed directly under the headline with the same left alignment.
+
+The badge reads "Free trial": set in a bold sans-serif in the accent colour inside a thin rounded outline of the same colour, with no fill, about 3% of the image height tall, placed in the top-left corner on the top and left margins, above the headline.
+
+The small line reads "Social posts drafted for you, too": set in a light sans-serif in soft grey, about 3% of the image height tall, placed in the bottom-left corner on the bottom margin.
+
+The brand name reads "EziTak": set in a bold sans-serif in white with wide letter spacing, about 3% of the image height tall, placed in the bottom-right corner on the same baseline as the small line.
+
+These five lines are the only words anywhere in the image. Write the brand name "EziTak" exactly as given, as plain lettering, not designed as a logo, emblem or monogram.
+
+Do not draw any real brand logo, trademark, app icon or watermark, and do not add any words, letters or numbers beyond the lines listed above. No frames or borders, no banners or text boxes, and no extra people or objects that are not part of the subject or its floating ring.
+
+Do not translate, shorten, repeat or restyle the wording of any line. Do not add religious or cultural symbols unless the subject itself asks for them.
+```
+
+### 行业 3：桌上的一杯咖啡（`ind-coffee`）
+
+提示词全文：
+
+```text
+A polished 3D-rendered promotional poster in a portrait 4:5 format, showing a cup of coffee on a table.
+
+A deep, almost black background fills the whole frame. The subject sits in the centre and takes up a little over half of the frame height, with wide dark margins on every side. All text is small and kept close to the edges, set directly on the dark background with nothing behind it, no panel, box, banner or strip; the middle of the frame belongs to the subject alone.
+
+A loose ring of five to seven small glossy 3D objects floats around the subject at different depths; each one is a simplified symbol taken from the subject itself rather than anything new, and none of them carries any lettering. Smooth clay-like 3D rendering with a soft sheen and a shallow depth of field, so the farthest floating objects blur slightly.
+
+Lit by one soft key light from the upper left and a thin rim light in the accent colour, with a faint accent-coloured glow pooling beneath the subject. The mood is calm, premium and modern, with most of the frame left in deep shadow.
+
+The colours stay restrained: near-black background, white for the headline and the brand name, soft grey for the small line, and the subject's own natural colours. The accent colour is electric violet (#7C5CFF). The accent colour appears on the badge, in the rim light and on two or three of the floating objects; a lighter tint of the same accent is used for the subheading. No other saturated colours are added to the background or the text.
+
+The image carries exactly five lines of text, each written exactly as given below.
+
+The headline reads "Every message, answered in seconds": set in a heavy geometric sans-serif in white, in no more than three lines, about 5% of the image height tall, placed directly under the badge, aligned to the left margin and spanning no more than about three quarters of the frame width.
+
+The subheading reads "Answers questions and takes bookings in any language": set in a regular-weight sans-serif in the light tint of the accent colour, in no more than two lines, about 3.2% of the image height tall, placed directly under the headline with the same left alignment.
+
+The badge reads "Free trial": set in a bold sans-serif in the accent colour inside a thin rounded outline of the same colour, with no fill, about 3% of the image height tall, placed in the top-left corner on the top and left margins, above the headline.
+
+The small line reads "Social posts drafted for you, too": set in a light sans-serif in soft grey, about 3% of the image height tall, placed in the bottom-left corner on the bottom margin.
+
+The brand name reads "EziTak": set in a bold sans-serif in white with wide letter spacing, about 3% of the image height tall, placed in the bottom-right corner on the same baseline as the small line.
+
+These five lines are the only words anywhere in the image. Write the brand name "EziTak" exactly as given, as plain lettering, not designed as a logo, emblem or monogram.
+
+Do not draw any real brand logo, trademark, app icon or watermark, and do not add any words, letters or numbers beyond the lines listed above. No frames or borders, no banners or text boxes, and no extra people or objects that are not part of the subject or its floating ring.
+
+Do not translate, shorten, repeat or restyle the wording of any line. Do not add religious or cultural symbols unless the subject itself asks for them.
+```
+
+### 语言：英文（EziTak 示例主体）（`lang-en`）
+
+提示词全文：
+
+```text
+A polished 3D-rendered promotional poster in a portrait 4:5 format, showing a sleek modern smartphone standing upright at a slight angle, its bright screen showing a chat conversation of rounded message bubbles in teal, violet and white, and below them an appointment confirmation card with a large green check mark and a small calendar symbol; the writing inside the bubbles and the card is tiny and softly blurred so that no words can be read.
+
+A deep, almost black background fills the whole frame. The subject sits in the centre and takes up a little over half of the frame height, with wide dark margins on every side. All text is small and kept close to the edges, set directly on the dark background with nothing behind it, no panel, box, banner or strip; the middle of the frame belongs to the subject alone.
+
+A loose ring of five to seven small glossy 3D objects floats around the subject at different depths; each one is a simplified symbol taken from the subject itself rather than anything new, and none of them carries any lettering. Smooth clay-like 3D rendering with a soft sheen and a shallow depth of field, so the farthest floating objects blur slightly.
+
+Lit by one soft key light from the upper left and a thin rim light in the accent colour, with a faint accent-coloured glow pooling beneath the subject. The mood is calm, premium and modern, with most of the frame left in deep shadow.
+
+The colours stay restrained: near-black background, white for the headline and the brand name, soft grey for the small line, and the subject's own natural colours. The accent colour is electric violet (#7C5CFF). The accent colour appears on the badge, in the rim light and on two or three of the floating objects; a lighter tint of the same accent is used for the subheading. No other saturated colours are added to the background or the text.
+
+The image carries exactly five lines of text, each written exactly as given below.
+
+The headline reads "Every message, answered in seconds": set in a heavy geometric sans-serif in white, in no more than three lines, about 5% of the image height tall, placed directly under the badge, aligned to the left margin and spanning no more than about three quarters of the frame width.
+
+The subheading reads "Answers questions and takes bookings in any language": set in a regular-weight sans-serif in the light tint of the accent colour, in no more than two lines, about 3.2% of the image height tall, placed directly under the headline with the same left alignment.
+
+The badge reads "Free trial": set in a bold sans-serif in the accent colour inside a thin rounded outline of the same colour, with no fill, about 3% of the image height tall, placed in the top-left corner on the top and left margins, above the headline.
+
+The small line reads "Social posts drafted for you, too": set in a light sans-serif in soft grey, about 3% of the image height tall, placed in the bottom-left corner on the bottom margin.
+
+The brand name reads "EziTak": set in a bold sans-serif in white with wide letter spacing, about 3% of the image height tall, placed in the bottom-right corner on the same baseline as the small line.
+
+These five lines are the only words anywhere in the image. Write the brand name "EziTak" exactly as given, as plain lettering, not designed as a logo, emblem or monogram.
+
+Do not draw any real brand logo, trademark, app icon or watermark, and do not add any words, letters or numbers beyond the lines listed above. No frames or borders, no banners or text boxes, and no extra people or objects that are not part of the subject or its floating ring.
+
+Do not translate, shorten, repeat or restyle the wording of any line. Do not add religious or cultural symbols unless the subject itself asks for them.
+```
