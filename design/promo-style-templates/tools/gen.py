@@ -27,35 +27,24 @@ def list_models():
         print(m["id"], "|", m.get("name"), "|", json.dumps(m.get("pricing")), "|", m.get("architecture", {}).get("output_modalities"))
 
 
-def generate(prompt, model, modalities):
+def generate(prompt, model):
+    """图像型号走 /api/v1/images（chat/completions 会返回 404）。"""
     # 密钥优先读环境变量；没有就不带 Authorization，由云端环境的 Network secrets 在出网时注入。
     key = os.environ.get("OPENROUTER_API_KEY")
     headers = {"Content-Type": "application/json"}
     if key:
         headers["Authorization"] = f"Bearer {key}"
-    body = {
-        "model": model,
-        "messages": [{"role": "user", "content": prompt}],
-        "modalities": modalities,
-        "image_config": {"aspect_ratio": "4:5"},
-    }
-    r = requests.post(
-        f"{API}/chat/completions",
-        headers=headers,
-        json=body,
-        timeout=300,
-    )
+    body = {"model": model, "prompt": prompt, "aspect_ratio": "4:5"}
+    r = requests.post(f"{API}/images", headers=headers, json=body, timeout=300)
     if r.status_code != 200:
         sys.exit(f"HTTP {r.status_code}: {r.text[:800]}")
     data = r.json()
-    msg = data["choices"][0]["message"]
-    images = msg.get("images") or []
-    if not images:
+    items = data.get("data") or []
+    if not items:
         sys.exit(f"没有返回图片：{json.dumps(data)[:800]}")
-    url = images[0]["image_url"]["url"]
-    header, b64 = url.split(",", 1)
-    ext = "png" if "png" in header else "jpg" if "jpeg" in header else "webp" if "webp" in header else "bin"
-    return base64.b64decode(b64), ext, data.get("usage")
+    media = items[0].get("media_type", "image/png")
+    ext = {"image/png": "png", "image/jpeg": "jpg", "image/webp": "webp"}.get(media, "bin")
+    return base64.b64decode(items[0]["b64_json"]), ext, data.get("usage")
 
 
 def main():
@@ -64,7 +53,6 @@ def main():
     ap.add_argument("case_id", nargs="?")
     ap.add_argument("--model")
     ap.add_argument("--accent")
-    ap.add_argument("--modalities", default="image")  # 两个型号的 output_modalities 都只有 image
     ap.add_argument("--out", default="out")
     ap.add_argument("--tag", default="")
     ap.add_argument("--dry-run", action="store_true")
@@ -81,7 +69,7 @@ def main():
     out.mkdir(parents=True, exist_ok=True)
     stem = f"{a.template_id}__{a.case_id}__{a.model.replace('/', '_')}{('__' + a.tag) if a.tag else ''}"
     t0 = time.time()
-    img, ext, usage = generate(prompt, a.model, a.modalities.split(","))
+    img, ext, usage = generate(prompt, a.model)
     (out / f"{stem}.{ext}").write_bytes(img)
     (out / f"{stem}.json").write_text(
         json.dumps({"model": a.model, "template": a.template_id, "case": a.case_id, "accent": a.accent,
