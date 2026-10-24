@@ -152,3 +152,10 @@ Do not draw any real brand logo, trademark, app icon or watermark, and do not ad
 
 Do not translate, shorten, repeat or restyle the wording of any line. Do not add religious or cultural symbols unless the subject itself asks for them.
 ```
+
+## 测试记录（只用 `meta/muse-image`，主体 = EziTak 示例，英文文案）
+
+| # | 改了什么 | 尺寸 | 费用 | 字高（大写字母高 / 画高） | 问题 |
+|---|---|---|---|---|---|
+| t1 | 初版模板；请求带 `aspect_ratio: "4:5"` | 1280×1920（2:3，参数被忽略） | $0.01 | 小字 1.17%、副标题 1.41%、角标 1.54%、标题 2.24%、品牌 3.23% | 画幅不对；字普遍过小；标题副标题落在左侧中部；屏幕模糊字里隐约重复了副标题 |
+| t2 | 请求改为 `size: "1024x1280"`；字号整体上调（6/4/3.5/3.5/3.5）；字号句改为 "with capital letters about X%"；加最小字号句；加「文案不在主体屏幕上重复」 | 1408×1760（4:5 ✅） | $0.01 | 小字 1.14%、副标题 1.70%、角标 1.76%、标题 3.52%、品牌 3.18% | ❌ 全部文字被排成全大写（"capital letters" 被照字面执行），品牌名成了 "EZITAK"；小字仍只有 1.14%；标题第二行压到手机边上。✅ 屏幕里不再出现文案 |
