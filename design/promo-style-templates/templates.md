@@ -50,7 +50,7 @@
   "headline": "headline",
   "subheadline": "subheading",
   "badge": "badge",
-  "small": "small line",
+  "small": "footer line",
   "brand": "brand name"
 }
 ```
@@ -66,9 +66,9 @@ SaaS/线上服务。主体是单件物品或一个画面时效果最好。
 |---|---|
 | 画幅与留白 | 4:5；近黑底铺满，主体略偏右、约占画高一半多，四周大面积留暗；字小、贴角，直接压在暗底上，背后没有色块 |
 | 版式 | 左上一列左对齐：角标在最上，下面紧接标题、副标题（都在画面上部，副标题不碰主体），整列限制在画面左侧 55% 宽度内；小字左下；品牌名右下，与小字同一基线 |
-| 字体层级 | 角标、副标题、小字、品牌四行**同字号**（≥ 标题字高一半），只靠颜色和粗细区分。标题 6%（粗几何黑体，白，最多三行）/ 副标题 3.5%（常规黑体，强调色浅色调，最多两行）/ 角标 3.5%（粗黑体，强调色，细描边圆角框、无填充）/ 小字 3.5%（细黑体，柔灰）/ 品牌 3.5%（粗黑体，白，宽字距） |
-| 配色 | 近黑底、白、柔灰 + 强调色 `{accent}`，默认电光紫 `#7C5CFF`；两级强调：强调色本色 + 浅色调 |
-| 画面手法 | 精致 3D 渲染；主体周围一圈 5–7 个小的光滑 3D 漂浮物，前后错落，全部取自主体本身的简化符号，不带任何字；浅景深 |
+| 字体层级 | 角标、副标题、小字、品牌四行**同字号**（≥ 标题字高一半），只靠颜色和粗细区分。标题 6%（粗几何黑体，白，最多三行）/ 副标题 4%（常规黑体，强调色浅色调，最多两行）/ 角标 3.5%（粗黑体，强调色，细描边圆角框、无填充）/ 小字 4%（常规黑体，浅灰，与副标题一样大；提示词里叫 footer line，避免被当成脚注缩小）/ 品牌 3.5%（粗黑体，白，宽字距） |
+| 配色 | 近黑底、白、浅灰 + 强调色 `{accent}`，默认电光紫 `#7C5CFF`；两级强调：强调色本色 + 浅色调 |
+| 画面手法 | 精致 3D 渲染；主体周围一圈 5–7 个小的光滑 3D 漂浮物，前后错落，全部取自主体本身的简化符号，不带任何字；主体和漂浮物都清晰锐利，最多最远的一两个略虚 |
 | 光线与气质 | 左上一盏柔和主光 + 强调色轮廓光，主体下方一抹强调色辉光；沉静、高级、现代，大部分画面在暗部 |
 | avoid | 不画真实商标、应用图标、水印；不出现文案以外的任何字、字母、数字；无边框、无横幅文字框、无主体以外新增的人或物 |
 
@@ -80,10 +80,10 @@ SaaS/线上服务。主体是单件物品或一个画面时效果最好。
   "aspectRatio": "4:5",
   "medium": "A polished 3D-rendered promotional poster",
   "canvas": "A deep, almost black background fills the whole frame. The subject sits slightly right of centre and takes up a little over half of the frame height, with wide dark margins on every side. All text is kept close to the edges, set directly on the dark background with nothing behind it, no panel, box, banner or strip; the middle of the frame belongs to the subject alone.",
-  "technique": "A loose ring of five to seven small glossy 3D objects floats around the subject at different depths; each one is a simplified symbol taken from the subject itself rather than anything new, and none of them carries any lettering. Smooth clay-like 3D rendering with a soft sheen and a shallow depth of field, so the farthest floating objects blur slightly.",
+  "technique": "A loose ring of five to seven small glossy 3D objects floats around the subject at different depths; each one is a simplified symbol taken from the subject itself rather than anything new, and none of them carries any lettering. Smooth clay-like 3D rendering with a soft sheen. The subject is in crisp, sharp focus with clean edges and fine detail, and so are the floating objects; only the one or two smallest objects farthest in the background may be very slightly softened.",
   "lighting": "Lit by one soft key light from the upper left and a thin rim light in the accent colour, with a faint accent-coloured glow pooling beneath the subject. The mood is calm, premium and modern, with most of the frame left in deep shadow.",
   "palette": {
-    "base": "The colours stay restrained: near-black background, white for the headline and the brand name, soft grey for the small line, and the subject's own natural colours.",
+    "base": "The colours stay restrained: near-black background, white for the headline and the brand name, light grey for the footer line, and the subject's own natural colours.",
     "accentSentence": "The accent colour is {accent}.",
     "accentDefault": "electric violet (#7C5CFF)",
     "accentRole": "The accent colour appears on the badge, in the rim light and on two or three of the floating objects; a lighter tint of the same accent is used for the subheading. No other saturated colours are added to the background or the text."
@@ -93,16 +93,16 @@ SaaS/线上服务。主体是单件物品或一个画面时效果最好。
     "subheadline": "placed directly under the headline with the same left alignment, kept clear of the subject",
     "badge": "placed in the top-left corner on the top and left margins, above the headline",
     "small": "placed in the bottom-left corner on the bottom margin",
-    "brand": "placed in the bottom-right corner on the same baseline as the small line"
+    "brand": "placed in the bottom-right corner on the same baseline as the footer line"
   },
   "typography": {
     "headline": { "heightPct": 6, "style": "set in a heavy geometric sans-serif in white, in no more than three lines" },
-    "subheadline": { "heightPct": 3.5, "style": "set in a regular-weight sans-serif in the light tint of the accent colour, in no more than two lines" },
+    "subheadline": { "heightPct": 4, "style": "set in a regular-weight sans-serif in the light tint of the accent colour, in no more than two lines" },
     "badge": { "heightPct": 3.5, "style": "set in a bold sans-serif in the accent colour inside a thin rounded outline of the same colour, with no fill" },
-    "small": { "heightPct": 3.5, "style": "set in a light sans-serif in soft grey" },
+    "small": { "heightPct": 4, "style": "set in a regular-weight sans-serif in light grey, exactly as large as the subheading" },
     "brand": { "heightPct": 3.5, "style": "set in a bold sans-serif in white with wide letter spacing" }
   },
-  "sizeRelation": "The badge, the subheading, the small line and the brand name are all set at the same text size, at least half the height of the headline letters; they differ from each other only in colour and weight, never in size.",
+  "sizeRelation": "The badge, the subheading, the footer line and the brand name are all set at the same text size, at least half the height of the headline letters; they differ from each other only in colour and weight, never in size.",
   "avoid": "Do not draw any real brand logo, trademark, app icon or watermark, and do not add any words, letters or numbers beyond the lines listed above. No frames or borders, no banners or text boxes, and no extra people or objects that are not part of the subject or its floating ring."
 }
 ```
