@@ -61,8 +61,10 @@
 生图模型只出**无字底图**；文字由代码用真实字体、HTML/CSS 排上去（`tools/render_html.mjs`，Chromium）。
 
 1. 生图提示词：`build_no_text`（`tools/build_prompt.py`），用模板的 `canvasNoText`（规定放字的暗部区域）、`palette.baseNoText` / `accentRoleNoText`、`avoidNoText`，末尾加通用 `noText` 句。
-2. 识图（之后接 `deepseek/deepseek-v4.1-flash`）：检查放字区域是否干净；对不用空格分词的文字（泰、老挝、缅甸、高棉）给出**断行单位** `segments`。
-3. `init`：模板 `textLayer` + 文案 + `segments` → **文字图层文档**（下一节）。
+2. 识图（`tools/vision.py`，`deepseek/deepseek-v4.1-flash`），两次调用：
+   - **看图**（带图，关推理，约 3 秒 / $0.0003）：主体外框、所有物件外框、底图里有没有字、需要人看的内容（单独漂浮的手、宗教符号、真实商标……）。「放字区域有没有被侵入」由代码按外框几何计算。
+   - **断行**（纯文字，推理 `low`，约 20–30 秒 / $0.001–0.002）：只对不用空格分词的文字（泰、老挝、缅甸、高棉）切断行单位 `segments`；拼不回原文逐字相同就丢弃、退回按空格切。它只依赖文案，**可以和生图并行**，不增加等待时间。
+3. `init --vision`：模板 `textLayer` + 文案 + 识图结果 → **文字图层文档**（下一节）。主体伸进文字列时，只把与主体同高的行收窄；识图的提示（区域被侵入、底图有字、concerns）写进文档的 `layoutNote`，给编辑器展示。
 4. 编辑器：商户拖动位置、调字号、点断行点、换特效预设 / 颜色角色——**改的就是这份文档**。
 5. `render`：服务端校验文档 → 同一套 HTML/CSS 截图出成品。编辑器里看到的和导出的是同一份 CSS。
 
@@ -75,7 +77,7 @@
 | `minCapPct` / `maxCapPct` | 字高上下限（参照字高 / 画高 ×100）。**2.5 是硬下限，编辑器和服务端都要挡** |
 | `accentLight` / `accentDark` | 强调色向白 / 向黑混合的比例，生成 `--accent-light` / `--accent-dark` |
 | `colors` | 允许的颜色角色：角色名 → 固定色，或 `accent` / `accentLight`（跟品牌色走） |
-| `initialLayout` | `init` 用的初始版式：边距、文字列顶 / 宽 / 间距 / 底、底边基线、`widthShrinkFloor`（为了不拆开一段最多缩到几倍） |
+| `initialLayout` | `init` 用的初始版式：边距、文字列顶 / 宽 / 间距 / 底、底边基线、`widthShrinkFloor`（为了不拆开一段最多缩到几倍）；有识图结果时，主体伸进文字列就把列宽收到「主体左边 − `subjectGap`」，但不窄于 `columnMinWidth` |
 | `slots` | 每槽默认字高 `capPct`、字重、颜色角色、行高、`maxLines`、`pill`（胶囊框） |
 | `effects` / `defaultEffect` | 特效预设：id → 一段 CSS（选择器 `.t` 是所有行，`.headline` 等是单槽；颜色只用 `var(--accent…)` 或 `currentColor`）。编辑器只能在这些预设里选 |
 
@@ -107,6 +109,8 @@
   ]
 }
 ```
+
+文档里可选的 `layoutNote`（`init` 写入，渲染器不读）：`narrowWidth` / `narrowedSlots`（哪些行因主体被收窄）、`vision.uncleanZones` / `hasText` / `textSeen` / `concerns`（编辑器应提示商户或拦下）。
 
 规则（`render_html.mjs validate`；服务端必须执行——文档来自浏览器，不可信）：
 - `segments.join("") === text`：编辑器只能改断行，不能借断行偷改字；改字要同时改 `text` 和 `segments`。
@@ -188,7 +192,9 @@ SaaS/线上服务。主体是单件物品或一个画面时效果最好。
       "columnGap": 0.022,
       "columnBottom": 0.5,
       "baseline": 0.945,
-      "widthShrinkFloor": 0.75
+      "widthShrinkFloor": 0.75,
+      "columnMinWidth": 0.36,
+      "subjectGap": 0.02
     },
     "slots": {
       "badge": {

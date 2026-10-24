@@ -1,6 +1,6 @@
-"""碰撞粗检：在 render_html.mjs 输出的每个文字行外框下，看无字底图里有多少明显亮于暗底的像素。
+"""碰撞粗检：在 render_html.mjs 输出的每个文字行外框（<out>.render.json）下，看无字底图里有多少明显亮于暗底的像素。
 
-  python3 check_text.py <base.png> <render.json>
+  python3 check_text.py <base.png> <out.render.json>
 >2% 视为字压到了画面里的东西（只适用于深色底模板；浅色模板要靠识图）。
 """
 import json
