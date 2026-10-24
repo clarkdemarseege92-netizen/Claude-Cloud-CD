@@ -30,13 +30,24 @@ def load_cases():
     return json.loads((ROOT / "tools" / "cases.json").read_text(encoding="utf-8"))
 
 
-def build(template, subject, copy, accent=None, common=None, slot_names=None):
+# Muse Image 传 size=1024x1280 时实际返回 1408×1760。unit="px" 时按这个画布把百分比换算成像素写进提示词。
+CANVAS = (1408, 1760)
+
+
+def size_phrase(pct, unit):
+    if unit == "px":
+        return f"{round(pct / 100 * CANVAS[1])} pixels"
+    return f"{pct:g}% of the image height"
+
+
+def build(template, subject, copy, accent=None, common=None, slot_names=None, unit="pct"):
     if common is None or slot_names is None:
         common, slot_names, _ = load()
     t = template
     pal = t["palette"]
     sentences = [
-        f"{t['medium']} in a portrait 4:5 format, showing {subject.rstrip('.')}.",
+        f"{t['medium']} in a portrait 4:5 format, showing {subject.rstrip('.')}."
+        + (f" The canvas is {CANVAS[0]} by {CANVAS[1]} pixels." if unit == "px" else ""),
         t["canvas"],
         t["technique"],
         t["lighting"],
@@ -50,9 +61,8 @@ def build(template, subject, copy, accent=None, common=None, slot_names=None):
         )
         for s in filled:
             ty = t["typography"][s]
-            pct = f"{ty['heightPct']:g}"
             sentences.append(
-                f"The {slot_names[s]} reads \"{copy[s].strip()}\": {ty['style']}, with letters about {pct}% of the image height tall, {t['layout'][s]}."
+                f"The {slot_names[s]} reads \"{copy[s].strip()}\": {ty['style']}, with letters about {size_phrase(ty['heightPct'], unit)} tall, {t['layout'][s]}."
             )
         if t.get("sizeRelation"):
             sentences.append(t["sizeRelation"])
@@ -61,19 +71,19 @@ def build(template, subject, copy, accent=None, common=None, slot_names=None):
         else:
             sentences.append(common["copyClosingNoBrand"].format(count=NUM_WORDS[n]))
         min_pct = min(t["typography"][s]["heightPct"] for s in filled)
-        sentences.append(common["minSize"].format(minPct=f"{min_pct:g}"))
+        sentences.append(common["minSize"].format(minSize=size_phrase(min_pct, unit)))
         sentences.append(common["caseRule"])
     sentences.append(t["avoid"])
     sentences.append(common["fixedTail"])
     return "\n\n".join(sentences)
 
 
-def build_case(template_id, case_id, accent=None):
+def build_case(template_id, case_id, accent=None, unit="pct"):
     common, slot_names, templates = load()
     cases = load_cases()
     case = cases["cases"][case_id]
     copy = cases["copy"][case["copy"]]
-    return build(templates[template_id], case["subject"], copy, accent, common, slot_names)
+    return build(templates[template_id], case["subject"], copy, accent, common, slot_names, unit)
 
 
 if __name__ == "__main__":
@@ -81,5 +91,6 @@ if __name__ == "__main__":
     ap.add_argument("template_id")
     ap.add_argument("case_id")
     ap.add_argument("--accent")
+    ap.add_argument("--unit", default="pct", choices=["pct", "px"])
     a = ap.parse_args()
-    print(build_case(a.template_id, a.case_id, a.accent))
+    print(build_case(a.template_id, a.case_id, a.accent, a.unit))

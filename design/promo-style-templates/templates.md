@@ -29,7 +29,7 @@
    `The {槽名} reads "{文案}": {typography.style}, with letters about {heightPct}% of the image height tall, {layout}.`
    模板若有 `sizeRelation`，紧跟在各槽句子之后。
 7. 唯一性句：这 N 行是画面上仅有的字，每行只出现一次、不在主体里的屏幕/招牌上重复；品牌名照原样书写，不要设计成标志。
-   再加最小字号句 `minSize`（`{minPct}` 取已填槽里最小的 heightPct）和大小写句 `caseRule`。
+   再加最小字号句 `minSize`（`{minSize}` 取已填槽里最小的字高；默认写成 "X% of the image height"，`--unit px` 时写成 "N pixels"）和大小写句 `caseRule`。
 8. `avoid`
 9. 通用尾句（所有模板相同）：
 
@@ -37,7 +37,7 @@
 {
   "copyClosing": "These {count} lines are the only words anywhere in the image, and each appears once, only in the position described, never repeated on screens, signs or objects inside the picture. Write the brand name {brand} exactly as given, as plain lettering, not designed as a logo, emblem or monogram.",
   "copyClosingNoBrand": "These {count} lines are the only words anywhere in the image, and each appears once, only in the position described, never repeated on screens, signs or objects inside the picture.",
-  "minSize": "No line of text may be smaller than stated: even the smallest line must be comfortably readable on a phone screen, with letters at least {minPct}% of the image height tall; when in doubt, set the text larger, never smaller.",
+  "minSize": "No line of text may be smaller than stated: even the smallest line must be comfortably readable on a phone screen, with letters at least {minSize} tall; when in doubt, set the text larger, never smaller.",
   "caseRule": "Keep the upper- and lower-case letters of every line exactly as written; do not turn any line into all capitals.",
   "fixedTail": "Do not translate, shorten, repeat or restyle the wording of any line. Do not add religious or cultural symbols unless the subject itself asks for them."
 }
