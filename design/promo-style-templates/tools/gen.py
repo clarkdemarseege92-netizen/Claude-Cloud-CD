@@ -60,6 +60,7 @@ def main():
     ap.add_argument("--accent")
     ap.add_argument("--size")
     ap.add_argument("--unit", default="pct", choices=["pct", "px"])
+    ap.add_argument("--no-text", action="store_true")
     ap.add_argument("--out", default="out")
     ap.add_argument("--tag", default="")
     ap.add_argument("--dry-run", action="store_true")
@@ -67,7 +68,7 @@ def main():
     a = ap.parse_args()
     if a.list_models:
         return list_models()
-    prompt = build_case(a.template_id, a.case_id, a.accent, a.unit)
+    prompt = build_case(a.template_id, a.case_id, a.accent, a.unit, a.no_text)
     if a.dry_run:
         return print(prompt)
     if not a.model:
@@ -79,7 +80,7 @@ def main():
     img, ext, usage = generate(prompt, a.model, a.size)
     (out / f"{stem}.{ext}").write_bytes(img)
     (out / f"{stem}.json").write_text(
-        json.dumps({"model": a.model, "size": a.size, "template": a.template_id, "case": a.case_id, "accent": a.accent, "unit": a.unit,
+        json.dumps({"model": a.model, "size": a.size, "template": a.template_id, "case": a.case_id, "accent": a.accent, "unit": a.unit, "no_text": a.no_text,
                     "prompt": prompt, "usage": usage, "seconds": round(time.time() - t0, 1)},
                    ensure_ascii=False, indent=2),
         encoding="utf-8",

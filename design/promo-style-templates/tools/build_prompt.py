@@ -40,10 +40,12 @@ def size_phrase(pct, unit):
     return f"{pct:g}% of the image height"
 
 
-def build(template, subject, copy, accent=None, common=None, slot_names=None, unit="pct"):
+def build(template, subject, copy, accent=None, common=None, slot_names=None, unit="pct", no_text=False):
     if common is None or slot_names is None:
         common, slot_names, _ = load()
     t = template
+    if no_text:
+        return build_no_text(t, subject, accent, common)
     pal = t["palette"]
     sentences = [
         f"{t['medium']} in a portrait 4:5 format, showing {subject.rstrip('.')}."
@@ -78,12 +80,27 @@ def build(template, subject, copy, accent=None, common=None, slot_names=None, un
     return "\n\n".join(sentences)
 
 
-def build_case(template_id, case_id, accent=None, unit="pct"):
+def build_no_text(t, subject, accent, common):
+    """无字底图：文字之后由代码排上去，所以这里只留出放字的暗部、并明确禁止任何字。"""
+    pal = t["palette"]
+    return "\n\n".join([
+        f"{t['medium']} in a portrait 4:5 format, showing {subject.rstrip('.')}.",
+        t["canvasNoText"],
+        t["technique"],
+        t["lighting"],
+        " ".join([pal["baseNoText"], pal["accentSentence"].format(accent=accent or pal["accentDefault"]), pal["accentRoleNoText"]]),
+        t["avoidNoText"],
+        common["noText"],
+        common["fixedTail"].split(". ", 1)[1],
+    ])
+
+
+def build_case(template_id, case_id, accent=None, unit="pct", no_text=False):
     common, slot_names, templates = load()
     cases = load_cases()
     case = cases["cases"][case_id]
     copy = cases["copy"][case["copy"]]
-    return build(templates[template_id], case["subject"], copy, accent, common, slot_names, unit)
+    return build(templates[template_id], case["subject"], copy, accent, common, slot_names, unit, no_text)
 
 
 if __name__ == "__main__":
@@ -92,5 +109,6 @@ if __name__ == "__main__":
     ap.add_argument("case_id")
     ap.add_argument("--accent")
     ap.add_argument("--unit", default="pct", choices=["pct", "px"])
+    ap.add_argument("--no-text", action="store_true")
     a = ap.parse_args()
-    print(build_case(a.template_id, a.case_id, a.accent, a.unit))
+    print(build_case(a.template_id, a.case_id, a.accent, a.unit, a.no_text))

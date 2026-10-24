@@ -39,6 +39,7 @@
   "copyClosingNoBrand": "These {count} lines are the only words anywhere in the image, and each appears once, only in the position described, never repeated on screens, signs or objects inside the picture.",
   "minSize": "No line of text may be smaller than stated: even the smallest line must be comfortably readable on a phone screen, with letters at least {minSize} tall; when in doubt, set the text larger, never smaller.",
   "caseRule": "Keep the upper- and lower-case letters of every line exactly as written; do not turn any line into all capitals.",
+  "noText": "No text, no lettering, no logos, no watermark anywhere in the image.",
   "fixedTail": "Do not translate, shorten, repeat or restyle the wording of any line. Do not add religious or cultural symbols unless the subject itself asks for them."
 }
 ```
@@ -54,6 +55,16 @@
   "brand": "brand name"
 }
 ```
+
+### 代码排字模式（试验中，2026-10-24 起）
+
+生图模型只出**无字底图**，文字由代码用真实字体排上去（`tools/render_text.py`）。
+
+- 生图提示词：`build_no_text`，用模板的 `canvasNoText`（规定放字的暗部区域）、`palette.baseNoText` / `accentRoleNoText`、`avoidNoText`，末尾加通用 `noText` 句。
+- 排字规格：模板的 `textLayer`。`slots[*].capPct` 是大写字母高 / 画高；文字列不越过 `column.bottom`，超出时整体缩小，但任何一行都不低于 `minCapPct`（2.5%）。
+- 颜色：`accent` = 强调色槽（商户品牌色或模板默认），`accentLight` = 强调色向白色混合的比例。
+- 字体：`font` 是字体类别，代码映射到字体文件（`geometric-sans` → Inter；正式实现要为泰文 / 中日韩 / 西里尔文配 Noto Sans 对应字体）。
+- 识图：之后用 `deepseek/deepseek-v4.1-flash`（OpenRouter，支持图像输入）检查放字区域是否干净、微调位置和颜色；现阶段先用 `render_text.py` 里的亮度粗检（`_collisionPct`）代替。
 
 ---
 
@@ -84,9 +95,11 @@ SaaS/线上服务。主体是单件物品或一个画面时效果最好。
   "lighting": "Lit by one soft key light from the upper left and a thin rim light in the accent colour, with a faint accent-coloured glow pooling beneath the subject. The mood is calm, premium and modern, with most of the frame left in deep shadow.",
   "palette": {
     "base": "The colours stay restrained: near-black background, white for the headline and the brand name, light grey for the footer line, and the subject's own natural colours.",
+    "baseNoText": "The colours stay restrained: a near-black background and the subject's own natural colours.",
     "accentSentence": "The accent colour is {accent}.",
     "accentDefault": "electric violet (#7C5CFF)",
-    "accentRole": "The accent colour appears on the badge, in the rim light and on two or three of the floating objects; a lighter tint of the same accent is used for the subheading. No other saturated colours are added to the background or the text."
+    "accentRole": "The accent colour appears on the badge, in the rim light and on two or three of the floating objects; a lighter tint of the same accent is used for the subheading. No other saturated colours are added to the background or the text.",
+    "accentRoleNoText": "The accent colour appears in the rim light and on two or three of the floating objects. No other saturated colours are added to the background."
   },
   "layout": {
     "headline": "placed directly under the badge in the upper part of the frame, aligned to the left margin, with the whole text column staying within the left fifty-five percent of the frame width",
@@ -101,6 +114,25 @@ SaaS/线上服务。主体是单件物品或一个画面时效果最好。
     "badge": { "heightPct": 3.5, "style": "set in a bold sans-serif in the accent colour inside a thin rounded outline of the same colour, with no fill" },
     "small": { "heightPct": 4, "style": "set in a regular-weight sans-serif in light grey, exactly as large as the subheading" },
     "brand": { "heightPct": 3.5, "style": "set in a bold sans-serif in white with wide letter spacing" }
+  },
+  "canvasNoText": "A deep, almost black background fills the whole frame. The subject sits in the lower right part of the frame, its centre about three fifths of the way across and a little below the middle, and it takes up about half of the frame height. The upper-left area, a little over half the frame wide and the top half of the frame tall, is calm dark background with only a soft gradient and nothing in it, and so is a band along the bottom edge; the floating objects stay around the subject on the right and lower part of the frame and never drift into these areas.",
+  "avoidNoText": "Do not draw any real brand logo, trademark, app icon or watermark. No frames or borders, no banners or panels, and no extra people or objects that are not part of the subject or its floating ring.",
+  "textLayer": {
+    "font": "geometric-sans",
+    "margin": 0.055,
+    "column": { "top": 0.055, "maxWidth": 0.5, "gap": 0.022, "bottom": 0.5 },
+    "bottomBand": 0.88,
+    "baseline": 0.945,
+    "shadow": { "color": "#000000", "opacity": 0.55, "blur": 0.012 },
+    "slots": {
+      "badge": { "capPct": 2.6, "weight": 700, "color": "accent", "outline": "accent", "pill": true, "maxLines": 1 },
+      "headline": { "capPct": 4.6, "weight": 800, "color": "#FFFFFF", "maxLines": 3, "lineHeight": 1.12 },
+      "subheadline": { "capPct": 2.7, "weight": 400, "color": "accentLight", "maxLines": 3, "lineHeight": 1.3 },
+      "small": { "capPct": 2.6, "weight": 400, "color": "#C9CAD6", "maxLines": 1, "anchor": "bottom-left" },
+      "brand": { "capPct": 3.2, "weight": 800, "color": "#FFFFFF", "tracking": 0.04, "maxLines": 1, "anchor": "bottom-right" }
+    },
+    "minCapPct": 2.5,
+    "accentLight": 0.45
   },
   "sizeRelation": "The badge, the subheading, the footer line and the brand name are all set at the same text size, at least half the height of the headline letters; they differ from each other only in colour and weight, never in size.",
   "avoid": "Do not draw any real brand logo, trademark, app icon or watermark, and do not add any words, letters or numbers beyond the lines listed above. No frames or borders, no banners or text boxes, and no extra people or objects that are not part of the subject or its floating ring."
