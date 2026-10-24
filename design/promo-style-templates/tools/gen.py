@@ -1,4 +1,4 @@
-"""通过 OpenRouter 出图。密钥只从环境变量 OPENROUTER_API_KEY 读，不打印、不落盘。
+"""通过 OpenRouter 出图。密钥读环境变量 OPENROUTER_API_KEY，或由环境的 Network secrets 注入；不打印、不落盘。
 
   python3 gen.py --list-models                      # 列出图像型号（核实 id 用）
   python3 gen.py dark-floating lang-en --model <id> # 出一张，存到 --out 目录
@@ -28,9 +28,11 @@ def list_models():
 
 
 def generate(prompt, model, modalities):
+    # 密钥优先读环境变量；没有就不带 Authorization，由云端环境的 Network secrets 在出网时注入。
     key = os.environ.get("OPENROUTER_API_KEY")
-    if not key:
-        sys.exit("OPENROUTER_API_KEY 未设置")
+    headers = {"Content-Type": "application/json"}
+    if key:
+        headers["Authorization"] = f"Bearer {key}"
     body = {
         "model": model,
         "messages": [{"role": "user", "content": prompt}],
@@ -39,7 +41,7 @@ def generate(prompt, model, modalities):
     }
     r = requests.post(
         f"{API}/chat/completions",
-        headers={"Authorization": f"Bearer {key}", "Content-Type": "application/json"},
+        headers=headers,
         json=body,
         timeout=300,
     )
