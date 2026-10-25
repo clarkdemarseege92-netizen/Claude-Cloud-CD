@@ -1,13 +1,15 @@
 // 文字图层：模板 + 文案 → TextLayerDoc（init）；TextLayerDoc → 成品图（render）。格式见 ../templates.md「文字图层文档」。
 //
 //   node render_html.mjs init   <base.png> <copy.json> <template_id> <doc.json> --font-dir <dir> [--accent #RRGGBB] [--effect id] [--segments seg.json]
-//   node render_html.mjs render <doc.json> <out.png> --font-dir <dir>
+//   node render_html.mjs render <doc.json> <out.png> --font-dir <dir> [--font-root <dir|url>]
 //   node render_html.mjs validate <doc.json>
 //
 // 编辑器读写的就是 doc.json；服务端只认 doc.json 出图，所以编辑器里看到的和导出的是同一套 HTML/CSS。
 // 默认按空格分段（空格留在前一段末尾）；不用空格分词的文字整段放不下时由浏览器自行断行。
 // 断在哪里由商户在编辑器里决定（拆段 + forceBreaks）；生图流程里不调用任何 AI 做断行或识图（2026-10-24 定）。
 // --segments：测试用，直接给定分段 {slot: ["段1", "段2", ...]}。
+// 文档可选 font: {family, version}：商户选的 Google 字体，按 font_mirror.py 复制到 --font-root（模拟 R2）后加载；
+// 模板自带字体作为后备。没有 font 字段时只用模板字体。
 // render 同时输出 <out>.render.json：每行实际行数、外框（供碰撞检查）、哪些段因放不下被迫段内断行。
 import { createRequire } from "node:module";
 const { chromium } = createRequire(import.meta.url)("playwright"); // 预装在全局，ESM import 解析不到
@@ -20,6 +22,17 @@ const COPY_LINE_MAX_CHARS = 80; // 与 promo-image-prompt.ts 同值
 const FONT_FILES = { "geometric-sans": ["Inter-var.ttf", "NotoSansThai-var.ttf"] };
 
 const args = process.argv.slice(2);
+const slug = (s) => s.toLowerCase().replace(/[^a-z0-9]+/g, "");
+/** 文案用到的文字体系 → 字体必须覆盖的 Google Fonts subset（任一满足即可）。 */
+function requiredSubsets(text) {
+  const need = [];
+  if (/[\u0E00-\u0E7F]/.test(text)) need.push(["thai"]);
+  if (/[\u3040-\u30FF]/.test(text)) need.push(["japanese"]);
+  else if (/[\u4E00-\u9FFF]/.test(text)) need.push(["chinese-simplified", "chinese-traditional", "chinese-hongkong", "japanese"]);
+  if (/[\u0400-\u04FF]/.test(text)) need.push(["cyrillic"]);
+  if (/[A-Za-z]/.test(text)) need.push(["latin"]);
+  return need;
+}
 const opt = (k, d) => (args.includes(k) ? args[args.indexOf(k) + 1] : d);
 const cmd = args[0];
 
@@ -43,6 +56,17 @@ function validate(doc) {
   if (doc.version !== 1) errs.push("version 必须是 1");
   if (!/^#[0-9A-Fa-f]{6}$/.test(doc.accent ?? "")) errs.push("accent 必须是 #RRGGBB");
   if (!tl.effects[doc.effect]) errs.push(`effect 只能是 ${Object.keys(tl.effects).join(" / ")}`);
+  if (doc.font !== undefined) {
+    const metaPath = path.join(fontRootDir(), slug(doc.font?.family ?? ""), doc.font?.version ?? "", "meta.json");
+    if (!fs.existsSync(metaPath)) errs.push(`font ${doc.font?.family} ${doc.font?.version} 还没复制到字体存储（${metaPath}）`);
+    else {
+      const meta = JSON.parse(fs.readFileSync(metaPath, "utf8"));
+      const all = (doc.lines ?? []).map((l) => l.text).join(" ");
+      for (const any of requiredSubsets(all)) {
+        if (!any.some((s) => meta.subsets.includes(s))) errs.push(`font ${meta.family} 不支持文案里的 ${any.join(" / ")} 文字`);
+      }
+    }
+  }
   const seen = new Set();
   for (const [i, l] of (doc.lines ?? []).entries()) {
     const at = `lines[${i}](${l.slot})`;
@@ -69,7 +93,8 @@ function pageHtml(doc, fontDir, W, H) {
   const roleColor = (role) => ({ accent: "var(--accent)", accentLight: "var(--accent-light)" })[tl.colors[role]] ?? tl.colors[role];
   const files = FONT_FILES[tl.fontFamily];
   const fonts = files.map((f, i) => `@font-face { font-family: F${i}; src: url("file://${fontDir}/${f}"); font-weight: 100 900; }`).join("\n");
-  const family = files.map((_, i) => `F${i}`).join(", ");
+  const family = [doc.font ? `"${doc.font.family}"` : null, ...files.map((_, i) => `F${i}`)].filter(Boolean).join(", ");
+  const fontLink = doc.font ? `<link rel="stylesheet" href="${fontRootUrl()}/${slug(doc.font.family)}/${doc.font.version}/font.css">` : "";
   const esc = (s) => s.replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
   const lines = doc.lines.map((l) => {
     const pill = tl.slots[l.slot]?.pill;
@@ -80,7 +105,7 @@ function pageHtml(doc, fontDir, W, H) {
     return `<div class="t ${l.slot}" data-slot="${l.slot}" data-cap="${l.capPct}" style="left:${l.x * W}px; top:${l.y * H}px; ${box} text-align:${l.align}; font-weight:${l.weight}; line-height:${l.lineHeight}; color:${roleColor(l.color)};">${inner}</div>`;
   });
   const bg = doc.base.startsWith("/") ? "file://" + doc.base : doc.base;
-  return `<!doctype html><html><head><meta charset="utf-8"><style>
+  return `<!doctype html><html><head><meta charset="utf-8">${fontLink}<style>
 ${fonts}
 html,body { margin:0; padding:0; }
 #c { --accent:${doc.accent}; --accent-light:${accentLight}; --accent-dark:${accentDark};
@@ -102,6 +127,7 @@ function sizeAndMeasure(page, H) {
       const cs = getComputedStyle(el);
       const ref = refChar(el.textContent);
       cv.font = `${cs.fontWeight} 1000px ${cs.fontFamily}`;
+      await document.fonts.load(cv.font, ref + el.textContent);
       const mt = cv.measureText(ref);
       const ratio = (mt.actualBoundingBoxAscent + (ref === "国" ? mt.actualBoundingBoxDescent : 0)) / 1000;
       el.style.fontSize = (+el.dataset.cap / 100) * H / ratio + "px";
@@ -223,6 +249,8 @@ async function init(basePath, copy, templateId, effect, accent, segmentsHint, fo
 }
 
 const fontDir = path.resolve(opt("--font-dir", "."));
+function fontRootDir() { return path.resolve(opt("--font-root", "fonts")); }
+function fontRootUrl() { const r = opt("--font-root", "fonts"); return /^https?:/.test(r) ? r.replace(/\/$/, "") : "file://" + path.resolve(r); }
 try {
   if (cmd === "init") {
     const [, base, copyPath, templateId, docPath] = args;

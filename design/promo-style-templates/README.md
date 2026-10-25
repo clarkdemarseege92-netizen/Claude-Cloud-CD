@@ -13,6 +13,7 @@
 | `tools/build_prompt.py` | 解析 `templates.md` 的 json 块，拼生图提示词 |
 | `tools/gen.py` | 调 OpenRouter 出图 |
 | `tools/render_html.mjs` | 文字图层：`init` / `render` / `validate`（Chromium + HTML/CSS） |
+| `tools/font_mirror.py` | 字体目录、选中即复制（模拟 R2）、菜单预览子集 |
 | `tools/check_text.py` | 碰撞粗检（深色模板）：文字框下面的底图是否有东西 |
 | `tools/measure.py` | 放大量字高（模型画字那条旧路径用的人工核对工具） |
 | `tools/cases.json` | 测试用主体（行业 3 + EziTak 示例）和文案（英文、泰文草稿） |
@@ -52,6 +53,12 @@ node render_html.mjs init   <base.png> <copy.json> dark-floating <doc.json> --fo
 node render_html.mjs render <doc.json> <out.png> --font-dir <fonts>     # 同时写 <out>.render.json
 node render_html.mjs validate <doc.json>
 
+# 字体：拉目录 → 选中即复制（本地目录模拟 R2）→ 文档加 font 后出图
+python3 font_mirror.py catalog <catalog.json>
+python3 font_mirror.py mirror <catalog.json> "Kanit" <fonts_root> [--base-url https://<r2-public>/fonts]
+python3 font_mirror.py preview "Kanit" "Kanit ทดลองใช้ฟรี" <out.css>
+node render_html.mjs render <doc.json> <out.png> --font-dir <fonts> --font-root <fonts_root>
+
 # 碰撞粗检（深色模板）：>2% 视为字压到画面里的东西
 python3 check_text.py <base.png> <out>.render.json
 ```
@@ -62,7 +69,24 @@ python3 check_text.py <base.png> <out>.render.json
 
 目标：商户能从 Google Fonts 里按语言挑字体；编辑器预览、服务端导出用**同一份字体文件**；不预先囤积字体，**谁选了才复制到 R2**。
 
-实测依据（2026-10-25）：Google Fonts 目录共 1950 个家族；按文字体系：简体中文 10、繁体中文 16（另香港 3）、日文 68、泰文 34、西里尔 294、拉丁 1829。CSS2 接口取 Noto Sans SC 两个字重返回 202 个 woff2 切片（单片约 4KB）；加 `text=` 只取十来个字，返回约 2.6KB 的子集字体。Developer API 不带 key 返回 403。
+实测依据（2026-10-25）：Google Fonts 目录共 1950 个家族；按文字体系：简体中文 10、繁体中文 16（另香港 3）、日文 68、泰文 34、西里尔 294、拉丁 1829。CSS2 接口取 Noto Sans SC 两个字重返回 202 个 woff2 切片（单片约 4KB）；加 `text=` 只取十来个字，返回约 2.6KB 的子集字体。Developer API 不带 key 返回 403；key 放在请求头 `X-Goog-Api-Key` 里可用（云端环境 Network secrets：网站 `www.googleapis.com`、路径 `/webfonts/`、前缀留空）。
+
+### 原型验证（`tools/font_mirror.py` + `render_html.mjs --font-root`，2026-10-25）
+
+| 测试 | 结果 |
+|---|---|
+| Developer API 目录 | 200；1959 个家族；字段 `family / category / variants / subsets / version / lastModified / files / axes / menu`。各文字体系数量与网站目录一致（简体 10、繁体 16、日 68、泰 34、西里尔 294） |
+| 选中即复制：Kanit（泰文，静态 9 字重） | 36 个 woff2，0.6MB，附 OFL 许可；版本 v17 与 CSS2 切片路径里的版本一致 |
+| 选中即复制：Noto Sans SC（简体） | 101 个切片覆盖全部字重，4.5MB，首次复制 6 秒；版本 v41 |
+| 菜单预览 `text=`（字体名 + 本语言样字，17 个字符） | Kanit 4.7KB、Noto Sans SC 2.4KB、ZCOOL KuaiLe 1.5KB，各 1 个文件 |
+| 文档加 `font: {family, version}` 出图 | Kanit、Noto Sans SC、ZCOOL KuaiLe 都正确加载；换字体后参照字高不变（泰文页脚两种字体都是 2.61%），因为字号按所选字体的参照字重新换算 |
+| 泰文文案选了 Noto Sans SC | `validate` 拒绝：「不支持文案里的 thai 文字」 |
+
+发现的事：
+- **模板必须给每种文字配默认字体**：中文文案不指定 `font` 时，模板字体（Inter + Noto Sans Thai）都不含汉字，只能落到容器的系统字体——生产环境不能依赖系统字体。dark-floating 的字体注册表要补 Noto Sans SC / TC / JP。
+- **商户选的字体会作用到所有行，包括品牌名**（例：选 ZCOOL KuaiLe 后 "EziTak" 也变成快乐体）。品牌名要不要固定用模板字体，是产品决定。
+- 目录不带 `capability=VF` 时不返回 `axes`；复制时按 `variants` 取全部字重即可，对可变字体 CSS2 返回的仍是同一组切片。
+- 中文副标题出现单字成行（"聊"），属于编辑器里商户手动调整的范围。
 
 ### 两个接口，各管一件事
 
