@@ -69,7 +69,7 @@
 
 | 字段 | 含义 |
 |---|---|
-| `fontFamily` | 字体类别；代码映射到字体文件（`geometric-sans` → Inter + Noto Sans Thai；正式实现补中日韩、西里尔用的 Noto） |
+| `defaultFonts` | 每种文字的默认字体（Google Fonts 家族名）：拉丁、西里尔、泰文、简体、繁体、日文。`init` 按文案语言排序并锁定版本写进文档，作为最后的后备 |
 | `safeMargin` | 安全边距（画面比例）：任何文字框不得越出 |
 | `minCapPct` / `maxCapPct` | 字高上下限（参照字高 / 画高 ×100）。**2.5 是硬下限，编辑器和服务端都要挡** |
 | `accentLight` / `accentDark` | 强调色向白 / 向黑混合的比例，生成 `--accent-light` / `--accent-dark` |
@@ -78,7 +78,9 @@
 | `slots` | 每槽默认字高 `capPct`、字重、颜色角色、行高、`maxLines`、`pill`（胶囊框） |
 | `effects` / `defaultEffect` | 特效预设：id → 一段 CSS（选择器 `.t` 是所有行，`.headline` 等是单槽；颜色只用 `var(--accent…)` 或 `currentColor`）。编辑器只能在这些预设里选 |
 
-字高口径：按文字体系取参照字——拉丁 `H`、西里尔 `Н`、泰文 `ก`（不含上下附加符号）、中日 `国`（整字）。同字号下泰文辅音只有拉丁大写的约 3/4，不分体系的话泰文会掉到 2% 以下（实测 1.99%）。
+字高口径：按文字体系取参照字——拉丁 `H`、西里尔 `Н`、泰文 `ก`（不含上下附加符号）、中日 `国`（整字）。同字号下泰文辅音只有拉丁大写的约 3/4，不分体系的话泰文会掉到 2% 以下（实测 1.99%）。**一行里有几种文字，按参照字最矮的那种定字号**（实测日文页脚按汉字定字号时，夹在里面的 "SNS" 只有 2.16%）；目标字高向上取整到整像素。
+
+断行质量：所有行 `text-wrap: pretty`（避免末行孤字）+ `word-break: auto-phrase`（日文按短语断行，只对 `lang=ja` 生效）。单行槽（角标、品牌）不插断行点、框宽按实际文字宽，可超出文字列但不出安全区。
 
 #### 文字图层文档（TextLayerDoc v1）
 
@@ -88,6 +90,9 @@
 {
   "version": 1,
   "template": "dark-floating",                  // 模板 id
+  "lang": "th",                                 // en / ru / th / zh-Hans / zh-Hant / ja：决定默认字体顺序（同一汉字在简 / 繁 / 日字体里字形不同）和日文短语断行
+  "defaultFonts": [{ "family": "Inter", "version": "v20" }, { "family": "Noto Sans Thai", "version": "v29" }, "…"],  // init 按模板 defaultFonts + lang 生成并锁定版本
+  "font": { "family": "Kanit", "version": "v17" },   // 可选：商户给整张图选的字体，作用于除品牌名以外的所有行
   "canvas": { "width": 1408, "height": 1760 },  // 底图像素尺寸
   "base": "<底图：服务端绝对路径或 URL>",
   "accent": "#0F9D8A",                          // 强调色：商户品牌色，未设则用模板默认
@@ -101,7 +106,8 @@
       "x": 0.055, "y": 0.0857, "w": 0.5,        // 文字框左上角和宽度（画面比例）；高度由排版决定
       "align": "left",                          // left / right / center
       "capPct": 3.22,                           // 参照字高 / 画高 ×100，范围 [minCapPct, maxCapPct]
-      "weight": 800, "color": "white", "lineHeight": 1.12   // color 必须是模板 colors 里的角色名
+      "weight": 800, "color": "white", "lineHeight": 1.12,  // color 必须是模板 colors 里的角色名
+      "font": { "family": "…", "version": "…" }  // 可选：单行字体，优先级最高；品牌名只认这一项
     }
   ]
 }
@@ -112,7 +118,8 @@
 - 某一段比文字框还宽时，渲染器**只对那一段**放开段内断行，并在输出里报 `unlockedSegments`，编辑器应提示商户加宽框或缩小字号。
 - 排出来的文字越过安全边距时，渲染器输出 `outsideSafeArea`，编辑器应提示。
 - 颜色、特效只能取模板里列出的值；不接受任意 CSS。
-- 可选 `font: { "family": "<Google Fonts 家族名>", "version": "<目录版本号>" }`：商户选的字体，必须已复制到字体存储，且其 `subsets` 覆盖文案用到的文字体系；不填则只用模板字体。字号按所选字体的参照字重新换算，字高不变。
+- 字体优先级：`lines[].font` > `font`（**品牌名跳过这一层**：默认用模板字体，商户可单独给品牌名换字体，例如节日版）> `defaultFonts`。所有字体都必须已复制到字体存储；`font` / `lines[].font` 的 `subsets` 必须覆盖它作用的文字；`defaultFonts` 合起来必须覆盖全部文案。字号按所用字体的参照字重新换算，字高不变。
+- **换字体会改变每行宽高**，而文档存的是绝对位置：编辑器换字体后应调用「按当前字体重新排版」（`init --font`），否则会重叠——渲染报告的 `overlaps` 会列出互相重叠的行，`outsideSafeArea` 列出越出安全区的行。
 
 `segments` 的来源：`init` 按空格切（空格留在前一段末尾）。不用空格分词的文字（泰文等）一整段放不下时，浏览器在段内自行断行；断得不对由商户在编辑器里拆段、强制换行或调宽度。编辑器拆段 / 合并时只改切分方式，拼起来必须仍与 `text` 逐字相同。
 
@@ -169,7 +176,14 @@ SaaS/线上服务。主体是单件物品或一个画面时效果最好。
   "canvasNoText": "A deep, almost black background fills the whole frame. The subject sits in the lower right part of the frame, its centre about three fifths of the way across and a little below the middle, and it takes up about half of the frame height. The upper-left area, a little over half the frame wide and the top half of the frame tall, is calm dark background with only a soft gradient and nothing in it, and so is a band along the bottom edge; the floating objects stay around the subject on the right and lower part of the frame and never drift into these areas.",
   "avoidNoText": "Do not draw any real brand logo, trademark, app icon or watermark. No frames or borders, no banners or panels, and no extra people or objects that are not part of the subject or its floating ring. No hands, body parts or hand gestures floating on their own.",
   "textLayer": {
-    "fontFamily": "geometric-sans",
+    "defaultFonts": {
+      "latin": "Inter",
+      "cyrillic": "Inter",
+      "thai": "Noto Sans Thai",
+      "zh-Hans": "Noto Sans SC",
+      "zh-Hant": "Noto Sans TC",
+      "ja": "Noto Sans JP"
+    },
     "safeMargin": 0.03,
     "minCapPct": 2.5,
     "maxCapPct": 12,

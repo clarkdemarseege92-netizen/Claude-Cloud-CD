@@ -1,7 +1,7 @@
 """字体「选中即复制」原型：Developer API 目录 → CSS2 切片 → 写到一个目录（模拟 R2）。
 
   python3 font_mirror.py catalog <catalog.json>                       # 拉目录（需 Google Fonts API key，由 Network secrets 注入请求头）
-  python3 font_mirror.py mirror <catalog.json> "<Family>" <root_dir> [--base-url URL]
+  python3 font_mirror.py mirror <catalog.json> "<Family>" <root_dir> [--base-url URL] [--force]
   python3 font_mirror.py preview "<Family>" "<样字>" <out.css>          # 菜单预览：text= 子集，只含这几个字
 
 mirror 结果：<root>/<family-slug>/<version>/font.css + *.woff2 + LICENSE.txt。
@@ -28,30 +28,36 @@ def slug(family):
 
 
 def fetch_catalog(path):
-    r = requests.get(CATALOG_API, params={"sort": "popularity"}, timeout=60)
+    # capability=VF 才会返回可变轴（axes）；不带它，复制时只能按字重取，光学尺寸等轴会被固定在默认值
+    r = requests.get(CATALOG_API, params={"sort": "popularity", "capability": "VF"}, timeout=60)
     r.raise_for_status()
     Path(path).write_text(r.text, encoding="utf-8")
     print(f"{len(r.json()['items'])} families -> {path}")
 
 
 def css2_query(entry):
-    """可变字体取整个字重区间，静态字体取全部非斜体字重。"""
+    """可变字体取全部轴的完整区间（实测只取 wght 时 Inter 的 opsz 被固定在 14，大字号字距偏宽，英文页脚多折一行）；
+    静态字体取全部非斜体字重。"""
     fam = entry["family"]  # 空格原样交给 requests 编码；先换成 + 会被编码成 %2B，CSS2 返回 400
-    wght = next((a for a in entry.get("axes") or [] if a["tag"] == "wght"), None)
-    if wght:
-        return f"{fam}:wght@{wght['start']}..{wght['end']}"
+    axes = [a for a in entry.get("axes") or [] if a["tag"] != "ital"]
+    if axes:
+        # CSS2 要求轴名按字母序、小写在前
+        axes.sort(key=lambda a: (a["tag"] != a["tag"].lower(), a["tag"]))
+        tags = ",".join(a["tag"] for a in axes)
+        ranges = ",".join(f"{a['start']:g}..{a['end']:g}" for a in axes)
+        return f"{fam}:{tags}@{ranges}"
     weights = sorted({int(v) if v.isdigit() else 400 for v in entry["variants"] if "italic" not in v})
     return f"{fam}:wght@{';'.join(map(str, weights))}"
 
 
-def mirror(catalog_path, family, root, base_url=None):
+def mirror(catalog_path, family, root, base_url=None, force=False):
     items = json.loads(Path(catalog_path).read_text(encoding="utf-8"))["items"]
     entry = next((i for i in items if i["family"] == family), None)
     if not entry:
         sys.exit(f"目录里没有 {family}")
     version = entry["version"]
     dest = Path(root) / slug(family) / version
-    if (dest / "font.css").exists():
+    if (dest / "font.css").exists() and not force:
         print(f"已存在，直接用：{dest / 'font.css'}")
         return dest
     css = requests.get(CSS2, params={"family": css2_query(entry), "display": "swap"}, headers={"User-Agent": UA}, timeout=60)
@@ -106,6 +112,6 @@ if __name__ == "__main__":
         fetch_catalog(sys.argv[2])
     elif cmd == "mirror":
         base = sys.argv[sys.argv.index("--base-url") + 1] if "--base-url" in sys.argv else None
-        mirror(sys.argv[2], sys.argv[3], sys.argv[4], base)
+        mirror(sys.argv[2], sys.argv[3], sys.argv[4], base, "--force" in sys.argv)
     elif cmd == "preview":
         preview(sys.argv[2], sys.argv[3], sys.argv[4])

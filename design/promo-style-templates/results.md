@@ -257,3 +257,33 @@ Do not translate, shorten, repeat or restyle the wording of any line. Do not add
 验证（底图 t7，无 AI）：英文 `init` → `render` 与之前一致；泰文默认分段时标题、副标题由浏览器段内断行（报告已列出这两段），等待商户在编辑器里调整。两个示例文档仍通过 `validate`。
 
 上文 DeepSeek 一节保留作记录：免费的浏览器分词（`Intl.Segmenter`）会把外来词拆碎（"โซเชียล" → "โซ|เชีย|ล"），这也是为什么默认只按空格分段、不用它。
+
+## dark-floating 语言验收（无字底图 t7 复用 + Chromium 排字，零生图费用，2026-10-25）
+
+字体：全部来自 Google Fonts，经 `font_mirror.py` 复制（模拟 R2）。模板默认字体：拉丁 / 西里尔 Inter v20、泰文 Noto Sans Thai v29、简体 Noto Sans SC v41、繁体 Noto Sans TC v40、日文 Noto Sans JP v57。
+
+文案（`tools/cases.json`）：简体由我起草；**繁体（台湾用语）、日文、俄文、泰文均为草稿，需母语者复核**。
+
+| 语言 | 行数（角标 / 标题 / 副标题 / 页脚 / 品牌） | 最小字高（像素复核） | 越界 / 重叠 / 碰撞 | 备注 |
+|---|---|---|---|---|
+| 英文 | 1 / 3 / 3 / 1 / 1 | 页脚 2.67% | 无 / 无 / 0 | |
+| 俄文 | 1 / 3 / 3 / 2 / 1 | 角标 2.50%、页脚 2.50%（按文字自身亮度一半为阈值） | 无 / 无 / 0 | 角标「Бесплатный пробный период」单行，框宽超出文字列（允许，不出安全区） |
+| 泰文 | 1 / 2 / 2 / 1 / 1 | 角标 2.50% | 无 / 无 / 0 | 默认按空格分段时标题在 "ตอบ / กลับ" 处断开，留给商户在编辑器里调整 |
+| 简体 | 1 / 2 / 2 / 1 / 1 | 页脚 2.67% | 无 / 无 / 0 | |
+| 繁体 | 1 / 2 / 2 / 1 / 1 | 同简体 | 无 / 无 / 0 | 逗号居中（台湾标点规范，正确） |
+| 日文 | 1 / 3 / 2 / 1 / 1 | 页脚 2.67%（含 "SNS"）、副标题 2.56% | 无 / 无 / 0 | 按短语断行：「すべての / メッセージに、数秒で / 返信」 |
+
+本轮修掉的问题（都改在 `render_html.mjs` / `font_mirror.py`，对所有模板生效）：
+1. 俄文角标被折成两行：单行槽里不再插断行点；`init` 时单行槽框宽 = 实际文字宽。
+2. 英文页脚 "too"、简体「聊」单独成行：所有行加 `text-wrap: pretty`。
+3. 日文在词中间断行（「ど / の言語」）：加 `word-break: auto-phrase`（只对 `lang=ja` 生效）。
+4. 英文页脚多折一行：复制 Inter 时只取了 wght 轴，opsz 被固定在 14（小字用、偏宽）。目录改带 `capability=VF` 取全部可变轴，复制时按全部轴取。
+5. 日文页脚里的 "SNS" 只有 2.16%：一行里有几种文字就按参照字最矮的那种定字号。
+6. 俄文页脚差 1px（2.44%）：目标字高向上取整到整像素。
+7. 换字体不重排会重叠：渲染报告新增 `overlaps`；`init --font` 支持按所选字体重新排版。
+
+字体规则验证：
+- 整张图选 Kanit：品牌名保持模板字体 Inter ✅；单独把品牌名换成 Pacifico ✅（示例 `examples/dark-floating.ezitak-en.brand-font.doc.json`）。
+- 只换字体、不重排：报告 `overlaps: [headline, subheadline]`、`outsideSafeArea: [small]` ✅；`init --font "Kanit@v17"` 重排后无重叠、无越界 ✅。
+
+缩略图 `thumbnails/dark-floating.webp` 已用新流程（Google Fonts 版 Inter）重新生成。

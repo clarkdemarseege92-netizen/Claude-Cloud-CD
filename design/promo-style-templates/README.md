@@ -36,7 +36,7 @@ build_no_text + gen.py        │   （模板 textLayer       断行 / 特效 / 
 
 ## 命令速查
 
-前置：`OPENROUTER_API_KEY` 由云端环境的 Network secrets 注入（`openrouter.ai`，路径 `/api/v1/`）；字体目录放 `Inter-var.ttf`、`NotoSansThai-var.ttf`（google/fonts，OFL）。
+前置：`OPENROUTER_API_KEY` 与 Google Fonts API key 都由云端环境的 Network secrets 注入（`openrouter.ai` `/api/v1/`；`www.googleapis.com` `/webfonts/`，标头 `X-Goog-Api-Key`）。字体全部来自 Google Fonts，先用 `font_mirror.py` 复制到字体目录（模拟 R2），模板默认字体（Inter、Noto Sans Thai / SC / TC / JP）必须先复制。
 
 ```bash
 cd design/promo-style-templates/tools
@@ -49,15 +49,14 @@ python3 gen.py dark-floating lang-en --no-text --dry-run
 python3 gen.py dark-floating ind-coffee --no-text --model meta/muse-image --size 1024x1280 --out <out_dir>
 
 # 文字图层：生成初始文档 → 出图 → 校验
-node render_html.mjs init   <base.png> <copy.json> dark-floating <doc.json> --font-dir <fonts>
-node render_html.mjs render <doc.json> <out.png> --font-dir <fonts>     # 同时写 <out>.render.json
-node render_html.mjs validate <doc.json>
+node render_html.mjs init   <base.png> <copy.json> dark-floating <doc.json> --lang <en|ru|th|zh-Hans|zh-Hant|ja> --font-root <fonts_root> [--font "Kanit@v17"]
+node render_html.mjs render <doc.json> <out.png> --font-root <fonts_root>    # 同时写 <out>.render.json（含 overlaps / outsideSafeArea）
+node render_html.mjs validate <doc.json> --font-root <fonts_root>
 
 # 字体：拉目录 → 选中即复制（本地目录模拟 R2）→ 文档加 font 后出图
 python3 font_mirror.py catalog <catalog.json>
 python3 font_mirror.py mirror <catalog.json> "Kanit" <fonts_root> [--base-url https://<r2-public>/fonts]
 python3 font_mirror.py preview "Kanit" "Kanit ทดลองใช้ฟรี" <out.css>
-node render_html.mjs render <doc.json> <out.png> --font-dir <fonts> --font-root <fonts_root>
 
 # 碰撞粗检（深色模板）：>2% 视为字压到画面里的东西
 python3 check_text.py <base.png> <out>.render.json

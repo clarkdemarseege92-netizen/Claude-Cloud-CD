@@ -1,13 +1,36 @@
 {
  "version": 1,
  "template": "dark-floating",
+ "lang": "th",
  "canvas": {
   "width": 1408,
   "height": 1760
  },
  "base": "/abs/path/or/https-url/of/base.png",
- "accent": "#0F9D8A",
- "effect": "stroke",
+ "defaultFonts": [
+  {
+   "family": "Inter",
+   "version": "v20"
+  },
+  {
+   "family": "Noto Sans Thai",
+   "version": "v29"
+  },
+  {
+   "family": "Noto Sans SC",
+   "version": "v41"
+  },
+  {
+   "family": "Noto Sans TC",
+   "version": "v40"
+  },
+  {
+   "family": "Noto Sans JP",
+   "version": "v57"
+  }
+ ],
+ "accent": "#7C5CFF",
+ "effect": "glow",
  "lines": [
   {
    "slot": "badge",
@@ -18,7 +41,7 @@
    "forceBreaks": [],
    "x": 0.055,
    "y": 0.055,
-   "w": 0.5,
+   "w": 0.4034,
    "align": "left",
    "capPct": 2.5,
    "weight": 700,
@@ -30,12 +53,9 @@
    "text": "ทุกข้อความ ตอบกลับในไม่กี่วินาที",
    "segments": [
     "ทุกข้อความ ",
-    "ตอบกลับ",
-    "ในไม่กี่วินาที"
+    "ตอบกลับในไม่กี่วินาที"
    ],
-   "forceBreaks": [
-    1
-   ],
+   "forceBreaks": [],
    "x": 0.055,
    "y": 0.1668,
    "w": 0.5,
@@ -49,13 +69,11 @@
    "slot": "subheadline",
    "text": "ตอบคำถามและรับจองได้ทุกภาษา",
    "segments": [
-    "ตอบคำถาม",
-    "และรับจอง",
-    "ได้ทุกภาษา"
+    "ตอบคำถามและรับจองได้ทุกภาษา"
    ],
    "forceBreaks": [],
    "x": 0.055,
-   "y": 0.4008,
+   "y": 0.3177,
    "w": 0.5,
    "align": "left",
    "capPct": 2.5,
@@ -67,14 +85,12 @@
    "slot": "small",
    "text": "ช่วยร่างโพสต์โซเชียลให้ด้วย",
    "segments": [
-    "ช่วยร่าง",
-    "โพสต์โซเชียล",
-    "ให้ด้วย"
+    "ช่วยร่างโพสต์โซเชียลให้ด้วย"
    ],
    "forceBreaks": [],
    "x": 0.055,
    "y": 0.8848,
-   "w": 0.6482,
+   "w": 0.6461,
    "align": "left",
    "capPct": 2.6,
    "weight": 400,
@@ -88,9 +104,9 @@
     "EziTak"
    ],
    "forceBreaks": [],
-   "x": 0.7532,
-   "y": 0.9012,
-   "w": 0.1918,
+   "x": 0.7511,
+   "y": 0.9007,
+   "w": 0.1939,
    "align": "right",
    "capPct": 3.2,
    "weight": 800,

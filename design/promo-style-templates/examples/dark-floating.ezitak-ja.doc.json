@@ -1,0 +1,116 @@
+{
+ "version": 1,
+ "template": "dark-floating",
+ "lang": "ja",
+ "canvas": {
+  "width": 1408,
+  "height": 1760
+ },
+ "base": "/abs/path/or/https-url/of/base.png",
+ "defaultFonts": [
+  {
+   "family": "Inter",
+   "version": "v20"
+  },
+  {
+   "family": "Noto Sans JP",
+   "version": "v57"
+  },
+  {
+   "family": "Noto Sans Thai",
+   "version": "v29"
+  },
+  {
+   "family": "Noto Sans SC",
+   "version": "v41"
+  },
+  {
+   "family": "Noto Sans TC",
+   "version": "v40"
+  }
+ ],
+ "accent": "#7C5CFF",
+ "effect": "glow",
+ "lines": [
+  {
+   "slot": "badge",
+   "text": "無料トライアル",
+   "segments": [
+    "無料トライアル"
+   ],
+   "forceBreaks": [],
+   "x": 0.055,
+   "y": 0.055,
+   "w": 0.3139,
+   "align": "left",
+   "capPct": 2.5,
+   "weight": 700,
+   "color": "accent",
+   "lineHeight": 1
+  },
+  {
+   "slot": "headline",
+   "text": "すべてのメッセージに、数秒で返信",
+   "segments": [
+    "すべてのメッセージに、数秒で返信"
+   ],
+   "forceBreaks": [],
+   "x": 0.055,
+   "y": 0.1321,
+   "w": 0.5,
+   "align": "left",
+   "capPct": 3.5,
+   "weight": 800,
+   "color": "white",
+   "lineHeight": 1.12
+  },
+  {
+   "slot": "subheadline",
+   "text": "質問への回答も予約受付も、どの言語でも",
+   "segments": [
+    "質問への回答も予約受付も、どの言語でも"
+   ],
+   "forceBreaks": [],
+   "x": 0.055,
+   "y": 0.2825,
+   "w": 0.5,
+   "align": "left",
+   "capPct": 2.5,
+   "weight": 400,
+   "color": "accentLight",
+   "lineHeight": 1.3
+  },
+  {
+   "slot": "small",
+   "text": "SNS投稿の下書きもおまかせ",
+   "segments": [
+    "SNS投稿の下書きもおまかせ"
+   ],
+   "forceBreaks": [],
+   "x": 0.055,
+   "y": 0.899,
+   "w": 0.6461,
+   "align": "left",
+   "capPct": 2.6,
+   "weight": 400,
+   "color": "grey",
+   "lineHeight": 1.3
+  },
+  {
+   "slot": "brand",
+   "text": "EziTak",
+   "segments": [
+    "EziTak"
+   ],
+   "forceBreaks": [],
+   "x": 0.7511,
+   "y": 0.9007,
+   "w": 0.1939,
+   "align": "right",
+   "capPct": 3.2,
+   "weight": 800,
+   "color": "white",
+   "lineHeight": 1
+  }
+ ]
+}
